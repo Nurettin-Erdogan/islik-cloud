@@ -1,8 +1,10 @@
 const express = require("express");
 const cors = require("cors");
 
-const customerRoutes = require("./routes/customers");
-const jobRoutes = require("./routes/jobs");
+const authRouter = require("./routes/auth");
+const customersRouter = require("./routes/customers");
+const jobsRouter = require("./routes/jobs");
+const { requireAuth } = require("./middleware/auth");
 
 const app = express();
 
@@ -12,12 +14,13 @@ app.use(express.json());
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
-    app: "islik-cloud-api"
+    service: "islik-cloud-api"
   });
 });
 
-app.use("/api/customers", customerRoutes);
-app.use("/api/jobs", jobRoutes);
+app.use("/api/auth", authRouter);
+app.use("/api/customers", requireAuth, customersRouter);
+app.use("/api/jobs", requireAuth, jobsRouter);
 
 app.use((req, res) => {
   res.status(404).json({
@@ -39,7 +42,7 @@ app.use((error, req, res, next) => {
   if (error.code === "P2003") {
     return res.status(400).json({
       error: {
-        message: "Related record does not exist."
+        message: "Related record was not found."
       }
     });
   }
