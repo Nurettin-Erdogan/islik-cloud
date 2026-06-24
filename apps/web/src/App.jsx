@@ -34,6 +34,10 @@ function App() {
   const [jobForm, setJobForm] = useState(initialJobForm);
   const [editingCustomerId, setEditingCustomerId] = useState(null);
   const [editingJobId, setEditingJobId] = useState(null);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [jobSearch, setJobSearch] = useState("");
+  const [jobStatusFilter, setJobStatusFilter] = useState("all");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -46,6 +50,42 @@ function App() {
   const pendingJobs = useMemo(() => {
     return jobs.filter((job) => job.status !== "completed").length;
   }, [jobs]);
+
+  const filteredCustomers = useMemo(() => {
+    const query = customerSearch.trim().toLowerCase();
+
+    if (!query) {
+      return customers;
+    }
+
+    return customers.filter((customer) => {
+      return [customer.name, customer.phone, customer.address, customer.note]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(query));
+    });
+  }, [customers, customerSearch]);
+
+  const filteredJobs = useMemo(() => {
+    const query = jobSearch.trim().toLowerCase();
+
+    return jobs.filter((job) => {
+      const matchesSearch = query
+        ? [job.title, job.description, job.customer?.name]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase().includes(query))
+        : true;
+
+      const matchesStatus =
+        jobStatusFilter === "all" ? true : job.status === jobStatusFilter;
+
+      const matchesPayment =
+        paymentStatusFilter === "all"
+          ? true
+          : job.paymentStatus === paymentStatusFilter;
+
+      return matchesSearch && matchesStatus && matchesPayment;
+    });
+  }, [jobs, jobSearch, jobStatusFilter, paymentStatusFilter]);
 
   async function loadData() {
     try {
@@ -94,6 +134,13 @@ function App() {
   function resetJobForm() {
     setJobForm(initialJobForm);
     setEditingJobId(null);
+  }
+
+  function resetFilters() {
+    setCustomerSearch("");
+    setJobSearch("");
+    setJobStatusFilter("all");
+    setPaymentStatusFilter("all");
   }
 
   function startEditCustomer(customer) {
@@ -266,6 +313,68 @@ function App() {
         </article>
       </section>
 
+      <section className="panel filter-panel">
+        <div>
+          <h2>Arama ve Filtreler</h2>
+          <p>Müşteri ve iş kayıtlarını hızlıca bul.</p>
+        </div>
+
+        <div className="filter-grid">
+          <label>
+            Müşteri Ara
+            <input
+              value={customerSearch}
+              onChange={(event) => setCustomerSearch(event.target.value)}
+              placeholder="Ad, telefon, adres veya not ara"
+            />
+          </label>
+
+          <label>
+            İş Ara
+            <input
+              value={jobSearch}
+              onChange={(event) => setJobSearch(event.target.value)}
+              placeholder="İş başlığı, açıklama veya müşteri ara"
+            />
+          </label>
+
+          <label>
+            İş Durumu
+            <select
+              value={jobStatusFilter}
+              onChange={(event) => setJobStatusFilter(event.target.value)}
+            >
+              <option value="all">Tüm durumlar</option>
+              <option value="pending">Bekliyor</option>
+              <option value="in_progress">Devam ediyor</option>
+              <option value="completed">Tamamlandı</option>
+              <option value="cancelled">İptal edildi</option>
+            </select>
+          </label>
+
+          <label>
+            Ödeme Durumu
+            <select
+              value={paymentStatusFilter}
+              onChange={(event) => setPaymentStatusFilter(event.target.value)}
+            >
+              <option value="all">Tüm ödemeler</option>
+              <option value="unpaid">Ödenmedi</option>
+              <option value="partial">Kısmi ödendi</option>
+              <option value="paid">Ödendi</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="filter-summary">
+          <span>{filteredCustomers.length} müşteri gösteriliyor</span>
+          <span>{filteredJobs.length} iş gösteriliyor</span>
+          <button type="button" className="secondary-button" onClick={resetFilters}>
+            Filtreleri Temizle
+          </button>
+        </div>
+      </section>
+
       {message ? <p className="message">{message}</p> : null}
       {loading ? <p className="message">Veriler yükleniyor...</p> : null}
 
@@ -426,10 +535,10 @@ function App() {
           <h2>Müşteriler</h2>
 
           <div className="list">
-            {customers.length === 0 ? (
-              <p>Henüz müşteri yok.</p>
+            {filteredCustomers.length === 0 ? (
+              <p>Filtreye uygun müşteri yok.</p>
             ) : (
-              customers.map((customer) => (
+              filteredCustomers.map((customer) => (
                 <div className="list-item" key={customer.id}>
                   <div>
                     <strong>{customer.name}</strong>
@@ -464,10 +573,10 @@ function App() {
           <h2>İşler</h2>
 
           <div className="list">
-            {jobs.length === 0 ? (
-              <p>Henüz iş kaydı yok.</p>
+            {filteredJobs.length === 0 ? (
+              <p>Filtreye uygun iş kaydı yok.</p>
             ) : (
-              jobs.map((job) => (
+              filteredJobs.map((job) => (
                 <div className="list-item" key={job.id}>
                   <div>
                     <strong>{job.title}</strong>
