@@ -4,30 +4,121 @@ const { prisma } = require("../lib/prisma");
 const router = express.Router();
 
 const allowedStatuses = ["pending", "in_progress", "completed", "cancelled"];
-const allowedPriorities = ["low", "normal", "high"];
+const allowedPriorities = ["low", "normal", "high", "urgent"];
 const allowedPaymentStatuses = ["unpaid", "partial", "paid"];
 
-function normalizeOptionalString(value) {
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
+function normalizeOptionalString(value, fieldName) {
+  if (value === undefined) {
+    return {
+      value: undefined
+    };
+  }
+
+  if (value === null) {
+    return {
+      value: null
+    };
+  }
+
   if (typeof value !== "string") {
-    return undefined;
+    return {
+      error: `${fieldName} must be a string.`
+    };
   }
 
   const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+
+  return {
+    value: trimmed.length > 0 ? trimmed : null
+  };
 }
 
-function normalizeNumber(value, fallback = 0) {
+function normalizeRequiredString(value, fieldName, minLength = 1) {
+  if (typeof value !== "string" || value.trim().length < minLength) {
+    return {
+      error: `${fieldName} is required.`
+    };
+  }
+
+  return {
+    value: value.trim()
+  };
+}
+
+function normalizeEnum(value, allowedValues, fieldName, fallback) {
+  if (value === undefined) {
+    return {
+      value: fallback
+    };
+  }
+
+  if (typeof value !== "string" || !allowedValues.includes(value)) {
+    return {
+      error: `${fieldName} must be one of: ${allowedValues.join(", ")}.`
+    };
+  }
+
+  return {
+    value
+  };
+}
+
+function normalizePrice(value, fallback) {
+  if (value === undefined) {
+    return {
+      value: fallback
+    };
+  }
+
   const numberValue = Number(value);
-  return Number.isFinite(numberValue) && numberValue >= 0 ? numberValue : fallback;
+
+  if (!Number.isFinite(numberValue) || numberValue < 0) {
+    return {
+      error: "price must be a positive number."
+    };
+  }
+
+  return {
+    value: numberValue
+  };
 }
 
 function normalizeDate(value) {
-  if (!value) {
-    return null;
+  if (value === undefined) {
+    return {
+      value: undefined
+    };
+  }
+
+  if (value === null || value === "") {
+    return {
+      value: null
+    };
   }
 
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+
+  if (Number.isNaN(date.getTime())) {
+    return {
+      error: "appointmentAt must be a valid date."
+    };
+  }
+
+  return {
+    value: date
+  };
+}
+
+function validationError(res, message) {
+  return res.status(400).json({
+    error: {
+      message
+    }
+  });
 }
 
 router.get("/", async (req, res, next) => {
@@ -51,43 +142,44 @@ router.get("/", async (req, res, next) => {
 
 router.post("/", async (req, res, next) => {
   try {
-    const {
-      customerId,
-      title,
-      description,
-      status,
-      priority,
-      price,
-      paymentStatus,
-      appointmentAt
-    } = req.body;
+    const customerId = normalizeRequiredString(req.body.customerId, "customerId");
+    const title = normalizeRequiredString(req.body.title, "title", 2);
+    const description = normalizeOptionalString(req.body.description, "description");
+    const status = normalizeEnum(req.body.status, allowedStatuses, "status", "pending");
+    const priority = normalizeEnum(req.body.priority, allowedPriorities, "priority", "normal");
+    const price = normalizePrice(req.body.price, 0);
+    const paymentStatus = normalizeEnum(
+      req.body.paymentStatus,
+      allowedPaymentStatuses,
+      "paymentStatus",
+      "unpaid"
+    );
+    const appointmentAt = normalizeDate(req.body.appointmentAt);
 
-    if (typeof customerId !== "string" || customerId.trim().length === 0) {
-      return res.status(400).json({
-        error: {
-          message: "customerId is required."
-        }
-      });
-    }
+    const error =
+      customerId.error ||
+      title.error ||
+      description.error ||
+      status.error ||
+      priority.error ||
+      price.error ||
+      paymentStatus.error ||
+      appointmentAt.error;
 
-    if (typeof title !== "string" || title.trim().length < 2) {
-      return res.status(400).json({
-        error: {
-          message: "Job title must be at least 2 characters."
-        }
-      });
+    if (error) {
+      return validationError(res, error);
     }
 
     const job = await prisma.job.create({
       data: {
-        customerId: customerId.trim(),
-        title: title.trim(),
-        description: normalizeOptionalString(description),
-        status: allowedStatuses.includes(status) ? status : "pending",
-        priority: allowedPriorities.includes(priority) ? priority : "normal",
-        price: normalizeNumber(price),
-        paymentStatus: allowedPaymentStatuses.includes(paymentStatus) ? paymentStatus : "unpaid",
-        appointmentAt: normalizeDate(appointmentAt)
+        customerId: customerId.value,
+        title: title.value,
+        description: description.value,
+        status: status.value,
+        priority: priority.value,
+        price: price.value,
+        paymentStatus: paymentStatus.value,
+        appointmentAt: appointmentAt.value ?? null
       },
       include: {
         customer: true
@@ -131,39 +223,97 @@ router.get("/:id", async (req, res, next) => {
 
 router.put("/:id", async (req, res, next) => {
   try {
-    const {
-      title,
-      description,
-      status,
-      priority,
-      price,
-      paymentStatus,
-      appointmentAt
-    } = req.body;
+    const data = {};
 
-    if (title !== undefined && (typeof title !== "string" || title.trim().length < 2)) {
-      return res.status(400).json({
-        error: {
-          message: "Job title must be at least 2 characters."
-        }
-      });
+    if (hasOwn(req.body, "customerId")) {
+      const customerId = normalizeRequiredString(req.body.customerId, "customerId");
+
+      if (customerId.error) {
+        return validationError(res, customerId.error);
+      }
+
+      data.customerId = customerId.value;
+    }
+
+    if (hasOwn(req.body, "title")) {
+      const title = normalizeRequiredString(req.body.title, "title", 2);
+
+      if (title.error) {
+        return validationError(res, title.error);
+      }
+
+      data.title = title.value;
+    }
+
+    if (hasOwn(req.body, "description")) {
+      const description = normalizeOptionalString(req.body.description, "description");
+
+      if (description.error) {
+        return validationError(res, description.error);
+      }
+
+      data.description = description.value;
+    }
+
+    if (hasOwn(req.body, "status")) {
+      const status = normalizeEnum(req.body.status, allowedStatuses, "status");
+
+      if (status.error) {
+        return validationError(res, status.error);
+      }
+
+      data.status = status.value;
+    }
+
+    if (hasOwn(req.body, "priority")) {
+      const priority = normalizeEnum(req.body.priority, allowedPriorities, "priority");
+
+      if (priority.error) {
+        return validationError(res, priority.error);
+      }
+
+      data.priority = priority.value;
+    }
+
+    if (hasOwn(req.body, "price")) {
+      const price = normalizePrice(req.body.price);
+
+      if (price.error) {
+        return validationError(res, price.error);
+      }
+
+      data.price = price.value;
+    }
+
+    if (hasOwn(req.body, "paymentStatus")) {
+      const paymentStatus = normalizeEnum(
+        req.body.paymentStatus,
+        allowedPaymentStatuses,
+        "paymentStatus"
+      );
+
+      if (paymentStatus.error) {
+        return validationError(res, paymentStatus.error);
+      }
+
+      data.paymentStatus = paymentStatus.value;
+    }
+
+    if (hasOwn(req.body, "appointmentAt")) {
+      const appointmentAt = normalizeDate(req.body.appointmentAt);
+
+      if (appointmentAt.error) {
+        return validationError(res, appointmentAt.error);
+      }
+
+      data.appointmentAt = appointmentAt.value;
     }
 
     const job = await prisma.job.update({
       where: {
         id: req.params.id
       },
-      data: {
-        ...(title !== undefined ? { title: title.trim() } : {}),
-        ...(description !== undefined ? { description: normalizeOptionalString(description) } : {}),
-        ...(status !== undefined && allowedStatuses.includes(status) ? { status } : {}),
-        ...(priority !== undefined && allowedPriorities.includes(priority) ? { priority } : {}),
-        ...(price !== undefined ? { price: normalizeNumber(price) } : {}),
-        ...(paymentStatus !== undefined && allowedPaymentStatuses.includes(paymentStatus)
-          ? { paymentStatus }
-          : {}),
-        ...(appointmentAt !== undefined ? { appointmentAt: normalizeDate(appointmentAt) } : {})
-      },
+      data,
       include: {
         customer: true
       }
