@@ -19,9 +19,27 @@ jobs:
   api:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: islik
+          POSTGRES_PASSWORD: islik_password
+          POSTGRES_DB: islik_cloud
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U islik -d islik_cloud"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     defaults:
       run:
         working-directory: apps/api
+
+    env:
+      DATABASE_URL: postgresql://islik:islik_password@localhost:5432/islik_cloud
 
     steps:
       - name: Checkout
@@ -36,6 +54,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run database migrations
+        run: npx prisma migrate deploy
 
       - name: Run tests
         run: npm test
