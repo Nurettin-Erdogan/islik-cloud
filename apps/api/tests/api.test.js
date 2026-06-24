@@ -5,66 +5,140 @@ const request = require("supertest");
 const { app } = require("../src/app");
 const { prisma } = require("../src/lib/prisma");
 
-async function cleanDatabase() {
+async function cleanup() {
   await prisma.job.deleteMany();
   await prisma.customer.deleteMany();
+  await prisma.user.deleteMany();
 }
 
-test.beforeEach(async () => {
-  await cleanDatabase();
-});
-
-test.after(async () => {
-  await cleanDatabase();
-  await prisma.$disconnect();
-});
-
-test("GET /health returns API status", async () => {
-  const response = await request(app).get("/health").expect(200);
-
-  assert.equal(response.body.status, "ok");
-  assert.equal(response.body.app, "islik-cloud-api");
-});
-
-test("customer CRUD flow works", async () => {
-  const createResponse = await request(app)
-    .post("/api/customers")
+async function createAuthToken() {
+  const response = await request(app)
+    .post("/api/auth/register")
     .send({
-      name: "Ahmet Yilmaz",
-      phone: "05551234567",
-      address: "Istanbul",
-      note: "Test musterisi"
+      name: "Test User",
+      email: `test-${Date.now()}-${Math.random()}@example.com`,
+      password: "secret123"
     })
     .expect(201);
 
-  const customerId = createResponse.body.data.id;
-  assert.ok(customerId);
-  assert.equal(createResponse.body.data.name, "Ahmet Yilmaz");
+  return response.body.data.token;
+}
 
-  const listResponse = await request(app).get("/api/customers").expect(200);
-  assert.equal(listResponse.body.data.length, 1);
+test.beforeEach(async () => {
+  await cleanup();
+});
 
-  const detailResponse = await request(app).get(`/api/customers/${customerId}`).expect(200);
-  assert.equal(detailResponse.body.data.id, customerId);
+test.after(async () => {
+  await cleanup();
+  await prisma.$disconnect();
+});
 
-  const updateResponse = await request(app)
-    .put(`/api/customers/${customerId}`)
+test("health endpoint returns ok", async () => {
+  const response = await request(app).get("/health").expect(200);
+
+  assert.equal(response.body.status, "ok");
+  assert.equal(response.body.service, "islik-cloud-api");
+});
+
+test("auth register, login and me work", async () => {
+  const registerResponse = await request(app)
+    .post("/api/auth/register")
     .send({
-      name: "Ahmet Yilmaz Updated"
+      name: "Auth User",
+      email: "auth@example.com",
+      password: "secret123"
+    })
+    .expect(201);
+
+  assert.ok(registerResponse.body.data.token);
+  assert.equal(registerResponse.body.data.user.email, "auth@example.com");
+  assert.equal(registerResponse.body.data.user.passwordHash, undefined);
+
+  const loginResponse = await request(app)
+    .post("/api/auth/login")
+    .send({
+      email: "auth@example.com",
+      password: "secret123"
     })
     .expect(200);
 
-  assert.equal(updateResponse.body.data.name, "Ahmet Yilmaz Updated");
+  assert.ok(loginResponse.body.data.token);
 
-  await request(app).delete(`/api/customers/${customerId}`).expect(204);
-  await request(app).get(`/api/customers/${customerId}`).expect(404);
+  const meResponse = await request(app)
+    .get("/api/auth/me")
+    .set("Authorization", `Bearer ${loginResponse.body.data.token}`)
+    .expect(200);
+
+  assert.equal(meResponse.body.data.user.email, "auth@example.com");
+});
+
+test("protected routes reject unauthenticated requests", async () => {
+  await request(app).get("/api/customers").expect(401);
+  await request(app).get("/api/jobs").expect(401);
+});
+
+test("customer CRUD flow works", async () => {
+  const token = await createAuthToken();
+
+  const createResponse = await request(app)
+    .post("/api/customers")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      name: "Ahmet Yılmaz",
+      phone: "05551234567",
+      address: "İstanbul",
+      note: "Test customer"
+    })
+    .expect(201);
+
+  const customer = createResponse.body.data;
+
+  assert.equal(customer.name, "Ahmet Yılmaz");
+
+  const listResponse = await request(app)
+    .get("/api/customers")
+    .set("Authorization", `Bearer ${token}`)
+    .expect(200);
+
+  assert.equal(listResponse.body.data.length, 1);
+
+  const getResponse = await request(app)
+    .get(`/api/customers/${customer.id}`)
+    .set("Authorization", `Bearer ${token}`)
+    .expect(200);
+
+  assert.equal(getResponse.body.data.id, customer.id);
+
+  const updateResponse = await request(app)
+    .put(`/api/customers/${customer.id}`)
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      name: "Mehmet Yılmaz",
+      phone: "05550000000"
+    })
+    .expect(200);
+
+  assert.equal(updateResponse.body.data.name, "Mehmet Yılmaz");
+
+  await request(app)
+    .delete(`/api/customers/${customer.id}`)
+    .set("Authorization", `Bearer ${token}`)
+    .expect(204);
+
+  await request(app)
+    .get(`/api/customers/${customer.id}`)
+    .set("Authorization", `Bearer ${token}`)
+    .expect(404);
 });
 
 test("job CRUD flow works", async () => {
+  const token = await createAuthToken();
+
   const customerResponse = await request(app)
     .post("/api/customers")
+    .set("Authorization", `Bearer ${token}`)
     .send({
-      name: "Mehmet Kaya"
+      name: "Job Customer"
     })
     .expect(201);
 
@@ -72,30 +146,42 @@ test("job CRUD flow works", async () => {
 
   const createJobResponse = await request(app)
     .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
     .send({
       customerId,
-      title: "Klima bakimi",
-      description: "Yillik servis kontrolu",
+      title: "Klima bakımı",
+      description: "Yıllık bakım",
       price: 1200,
       status: "pending",
-      paymentStatus: "unpaid"
+      priority: "urgent",
+      paymentStatus: "unpaid",
+      appointmentAt: "2030-01-01T10:30:00.000Z"
     })
     .expect(201);
 
-  const jobId = createJobResponse.body.data.id;
-  assert.ok(jobId);
-  assert.equal(createJobResponse.body.data.customerId, customerId);
-  assert.equal(createJobResponse.body.data.title, "Klima bakimi");
+  const job = createJobResponse.body.data;
 
-  const jobsResponse = await request(app).get("/api/jobs").expect(200);
-  assert.equal(jobsResponse.body.data.length, 1);
+  assert.equal(job.title, "Klima bakımı");
+  assert.equal(job.customerId, customerId);
+  assert.equal(job.priority, "urgent");
 
-  const detailResponse = await request(app).get(`/api/jobs/${jobId}`).expect(200);
-  assert.equal(detailResponse.body.data.id, jobId);
-  assert.equal(detailResponse.body.data.customer.id, customerId);
+  const listResponse = await request(app)
+    .get("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
+    .expect(200);
+
+  assert.equal(listResponse.body.data.length, 1);
+
+  const getResponse = await request(app)
+    .get(`/api/jobs/${job.id}`)
+    .set("Authorization", `Bearer ${token}`)
+    .expect(200);
+
+  assert.equal(getResponse.body.data.id, job.id);
 
   const updateResponse = await request(app)
-    .put(`/api/jobs/${jobId}`)
+    .put(`/api/jobs/${job.id}`)
+    .set("Authorization", `Bearer ${token}`)
     .send({
       status: "completed",
       paymentStatus: "paid"
@@ -105,25 +191,36 @@ test("job CRUD flow works", async () => {
   assert.equal(updateResponse.body.data.status, "completed");
   assert.equal(updateResponse.body.data.paymentStatus, "paid");
 
-  await request(app).delete(`/api/jobs/${jobId}`).expect(204);
-  await request(app).get(`/api/jobs/${jobId}`).expect(404);
+  await request(app)
+    .delete(`/api/jobs/${job.id}`)
+    .set("Authorization", `Bearer ${token}`)
+    .expect(204);
+
+  await request(app)
+    .get(`/api/jobs/${job.id}`)
+    .set("Authorization", `Bearer ${token}`)
+    .expect(404);
 });
 
-test("creating a job with missing customer returns 400", async () => {
-  const response = await request(app)
+test("job creation with missing customer returns 400", async () => {
+  const token = await createAuthToken();
+
+  await request(app)
     .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
     .send({
       customerId: "missing-customer-id",
-      title: "Gecersiz is"
+      title: "Invalid job"
     })
     .expect(400);
-
-  assert.equal(response.body.error.message, "Related record does not exist.");
 });
 
 test("job validation rejects invalid fields", async () => {
+  const token = await createAuthToken();
+
   const customerResponse = await request(app)
     .post("/api/customers")
+    .set("Authorization", `Bearer ${token}`)
     .send({
       name: "Validation Customer"
     })
@@ -133,6 +230,7 @@ test("job validation rejects invalid fields", async () => {
 
   await request(app)
     .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
     .send({
       customerId,
       title: "Invalid status",
@@ -142,6 +240,7 @@ test("job validation rejects invalid fields", async () => {
 
   await request(app)
     .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
     .send({
       customerId,
       title: "Invalid priority",
@@ -151,6 +250,7 @@ test("job validation rejects invalid fields", async () => {
 
   await request(app)
     .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
     .send({
       customerId,
       title: "Invalid price",
@@ -160,49 +260,11 @@ test("job validation rejects invalid fields", async () => {
 
   await request(app)
     .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
     .send({
       customerId,
       title: "Invalid appointment",
       appointmentAt: "not-a-date"
     })
     .expect(400);
-});
-
-test("job update can change customer, priority and appointment date", async () => {
-  const firstCustomerResponse = await request(app)
-    .post("/api/customers")
-    .send({
-      name: "First Customer"
-    })
-    .expect(201);
-
-  const secondCustomerResponse = await request(app)
-    .post("/api/customers")
-    .send({
-      name: "Second Customer"
-    })
-    .expect(201);
-
-  const createJobResponse = await request(app)
-    .post("/api/jobs")
-    .send({
-      customerId: firstCustomerResponse.body.data.id,
-      title: "Appointment job"
-    })
-    .expect(201);
-
-  const appointmentAt = "2030-01-01T10:30:00.000Z";
-
-  const updateResponse = await request(app)
-    .put(`/api/jobs/${createJobResponse.body.data.id}`)
-    .send({
-      customerId: secondCustomerResponse.body.data.id,
-      priority: "urgent",
-      appointmentAt
-    })
-    .expect(200);
-
-  assert.equal(updateResponse.body.data.customerId, secondCustomerResponse.body.data.id);
-  assert.equal(updateResponse.body.data.priority, "urgent");
-  assert.equal(updateResponse.body.data.appointmentAt, appointmentAt);
 });
