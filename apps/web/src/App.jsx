@@ -7,6 +7,7 @@ import {
   deleteJob,
   getCustomers,
   getJobs,
+  updateCustomer,
   updateJob
 } from "./services/api";
 
@@ -31,6 +32,8 @@ function App() {
   const [jobs, setJobs] = useState([]);
   const [customerForm, setCustomerForm] = useState(initialCustomerForm);
   const [jobForm, setJobForm] = useState(initialJobForm);
+  const [editingCustomerId, setEditingCustomerId] = useState(null);
+  const [editingJobId, setEditingJobId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -83,13 +86,53 @@ function App() {
     }));
   }
 
+  function resetCustomerForm() {
+    setCustomerForm(initialCustomerForm);
+    setEditingCustomerId(null);
+  }
+
+  function resetJobForm() {
+    setJobForm(initialJobForm);
+    setEditingJobId(null);
+  }
+
+  function startEditCustomer(customer) {
+    setEditingCustomerId(customer.id);
+    setCustomerForm({
+      name: customer.name || "",
+      phone: customer.phone || "",
+      address: customer.address || "",
+      note: customer.note || ""
+    });
+    setMessage(`${customer.name} düzenleme moduna alındı.`);
+  }
+
+  function startEditJob(job) {
+    setEditingJobId(job.id);
+    setJobForm({
+      customerId: job.customerId || "",
+      title: job.title || "",
+      description: job.description || "",
+      price: String(job.price || ""),
+      status: job.status || "pending",
+      paymentStatus: job.paymentStatus || "unpaid"
+    });
+    setMessage(`${job.title} düzenleme moduna alındı.`);
+  }
+
   async function handleCustomerSubmit(event) {
     event.preventDefault();
 
     try {
-      await createCustomer(customerForm);
-      setCustomerForm(initialCustomerForm);
-      setMessage("Müşteri eklendi.");
+      if (editingCustomerId) {
+        await updateCustomer(editingCustomerId, customerForm);
+        setMessage("Müşteri güncellendi.");
+      } else {
+        await createCustomer(customerForm);
+        setMessage("Müşteri eklendi.");
+      }
+
+      resetCustomerForm();
       await loadData();
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
@@ -100,13 +143,20 @@ function App() {
     event.preventDefault();
 
     try {
-      await createJob({
+      const payload = {
         ...jobForm,
         price: Number(jobForm.price || 0)
-      });
+      };
 
-      setJobForm(initialJobForm);
-      setMessage("İş kaydı eklendi.");
+      if (editingJobId) {
+        await updateJob(editingJobId, payload);
+        setMessage("İş kaydı güncellendi.");
+      } else {
+        await createJob(payload);
+        setMessage("İş kaydı eklendi.");
+      }
+
+      resetJobForm();
       await loadData();
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
@@ -124,6 +174,11 @@ function App() {
 
     try {
       await deleteCustomer(customer.id);
+
+      if (editingCustomerId === customer.id) {
+        resetCustomerForm();
+      }
+
       setMessage("Müşteri silindi.");
       await loadData();
     } catch (error) {
@@ -140,6 +195,11 @@ function App() {
 
     try {
       await deleteJob(job.id);
+
+      if (editingJobId === job.id) {
+        resetJobForm();
+      }
+
       setMessage("İş kaydı silindi.");
       await loadData();
     } catch (error) {
@@ -211,7 +271,7 @@ function App() {
 
       <section className="workspace-grid">
         <form className="panel" onSubmit={handleCustomerSubmit}>
-          <h2>Müşteri Ekle</h2>
+          <h2>{editingCustomerId ? "Müşteri Düzenle" : "Müşteri Ekle"}</h2>
 
           <label>
             Ad Soyad
@@ -254,11 +314,21 @@ function App() {
             />
           </label>
 
-          <button type="submit">Müşteri Kaydet</button>
+          <div className="form-actions">
+            <button type="submit">
+              {editingCustomerId ? "Müşteriyi Güncelle" : "Müşteri Kaydet"}
+            </button>
+
+            {editingCustomerId ? (
+              <button type="button" className="secondary-button" onClick={resetCustomerForm}>
+                Vazgeç
+              </button>
+            ) : null}
+          </div>
         </form>
 
         <form className="panel" onSubmit={handleJobSubmit}>
-          <h2>İş Kaydı Ekle</h2>
+          <h2>{editingJobId ? "İş Kaydı Düzenle" : "İş Kaydı Ekle"}</h2>
 
           <label>
             Müşteri
@@ -333,9 +403,17 @@ function App() {
             </select>
           </label>
 
-          <button type="submit" disabled={customers.length === 0}>
-            İş Kaydet
-          </button>
+          <div className="form-actions">
+            <button type="submit" disabled={customers.length === 0}>
+              {editingJobId ? "İşi Güncelle" : "İş Kaydet"}
+            </button>
+
+            {editingJobId ? (
+              <button type="button" className="secondary-button" onClick={resetJobForm}>
+                Vazgeç
+              </button>
+            ) : null}
+          </div>
 
           {customers.length === 0 ? (
             <small>İş eklemek için önce müşteri oluştur.</small>
@@ -360,6 +438,14 @@ function App() {
                   </div>
 
                   <div className="list-actions">
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => startEditCustomer(customer)}
+                    >
+                      Düzenle
+                    </button>
+
                     <button
                       type="button"
                       className="danger-button"
@@ -393,6 +479,14 @@ function App() {
                   </div>
 
                   <div className="list-actions">
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => startEditJob(job)}
+                    >
+                      Düzenle
+                    </button>
+
                     <button
                       type="button"
                       className="ghost-button"
