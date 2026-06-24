@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: islik_cloud_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: islik
+      POSTGRES_PASSWORD: islik_password
+      POSTGRES_DB: islik_cloud
+    ports:
+      - "5432:5432"
+    volumes:
+      - islik_cloud_pgdata:/var/lib/postgresql/data
+
+volumes:
+  islik_cloud_pgdata:
