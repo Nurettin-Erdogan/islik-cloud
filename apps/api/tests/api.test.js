@@ -120,3 +120,89 @@ test("creating a job with missing customer returns 400", async () => {
 
   assert.equal(response.body.error.message, "Related record does not exist.");
 });
+
+test("job validation rejects invalid fields", async () => {
+  const customerResponse = await request(app)
+    .post("/api/customers")
+    .send({
+      name: "Validation Customer"
+    })
+    .expect(201);
+
+  const customerId = customerResponse.body.data.id;
+
+  await request(app)
+    .post("/api/jobs")
+    .send({
+      customerId,
+      title: "Invalid status",
+      status: "wrong"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/jobs")
+    .send({
+      customerId,
+      title: "Invalid priority",
+      priority: "wrong"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/jobs")
+    .send({
+      customerId,
+      title: "Invalid price",
+      price: -100
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/jobs")
+    .send({
+      customerId,
+      title: "Invalid appointment",
+      appointmentAt: "not-a-date"
+    })
+    .expect(400);
+});
+
+test("job update can change customer, priority and appointment date", async () => {
+  const firstCustomerResponse = await request(app)
+    .post("/api/customers")
+    .send({
+      name: "First Customer"
+    })
+    .expect(201);
+
+  const secondCustomerResponse = await request(app)
+    .post("/api/customers")
+    .send({
+      name: "Second Customer"
+    })
+    .expect(201);
+
+  const createJobResponse = await request(app)
+    .post("/api/jobs")
+    .send({
+      customerId: firstCustomerResponse.body.data.id,
+      title: "Appointment job"
+    })
+    .expect(201);
+
+  const appointmentAt = "2030-01-01T10:30:00.000Z";
+
+  const updateResponse = await request(app)
+    .put(`/api/jobs/${createJobResponse.body.data.id}`)
+    .send({
+      customerId: secondCustomerResponse.body.data.id,
+      priority: "urgent",
+      appointmentAt
+    })
+    .expect(200);
+
+  assert.equal(updateResponse.body.data.customerId, secondCustomerResponse.body.data.id);
+  assert.equal(updateResponse.body.data.priority, "urgent");
+  assert.equal(updateResponse.body.data.appointmentAt, appointmentAt);
+});
