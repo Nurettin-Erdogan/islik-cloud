@@ -299,3 +299,56 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+.job-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.status-pending {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.status-in_progress {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.status-completed {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.status-cancelled {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.payment-unpaid {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.payment-partial {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.payment-paid {
+  color: #166534;
+  background: #dcfce7;
+}
