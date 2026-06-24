@@ -40,6 +40,13 @@ export async function createCustomer(payload) {
   });
 }
 
+export async function updateCustomer(id, payload) {
+  return request(`/api/customers/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function deleteCustomer(id) {
   return request(`/api/customers/${id}`, {
     method: "DELETE"
