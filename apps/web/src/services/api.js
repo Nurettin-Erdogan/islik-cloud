@@ -40,6 +40,12 @@ export async function createCustomer(payload) {
   });
 }
 
+export async function deleteCustomer(id) {
+  return request(`/api/customers/${id}`, {
+    method: "DELETE"
+  });
+}
+
 export async function getJobs() {
   return request("/api/jobs");
 }
@@ -48,5 +54,18 @@ export async function createJob(payload) {
   return request("/api/jobs", {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+export async function updateJob(id, payload) {
+  return request(`/api/jobs/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteJob(id) {
+  return request(`/api/jobs/${id}`, {
+    method: "DELETE"
   });
 }

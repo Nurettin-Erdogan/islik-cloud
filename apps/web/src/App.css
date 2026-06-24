@@ -208,3 +208,36 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+.list-item {
+  align-items: start;
+}
+
+.list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.list-actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.ghost-button {
+  color: #2563eb;
+  background: #eaf1ff;
+}
+
+.danger-button {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.ghost-button:disabled {
+  color: #64748b;
+  background: #e2e8f0;
+}

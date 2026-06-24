@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
-import { createCustomer, createJob, getCustomers, getJobs } from "./services/api";
+import {
+  createCustomer,
+  createJob,
+  deleteCustomer,
+  deleteJob,
+  getCustomers,
+  getJobs,
+  updateJob
+} from "./services/api";
 
 const initialCustomerForm = {
   name: "",
@@ -99,6 +107,66 @@ function App() {
 
       setJobForm(initialJobForm);
       setMessage("İş kaydı eklendi.");
+      await loadData();
+    } catch (error) {
+      setMessage(`Hata: ${error.message}`);
+    }
+  }
+
+  async function handleDeleteCustomer(customer) {
+    const confirmed = window.confirm(
+      `${customer.name} müşterisini silmek istiyor musun? Bu müşteriye bağlı işler de silinir.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteCustomer(customer.id);
+      setMessage("Müşteri silindi.");
+      await loadData();
+    } catch (error) {
+      setMessage(`Hata: ${error.message}`);
+    }
+  }
+
+  async function handleDeleteJob(job) {
+    const confirmed = window.confirm(`${job.title} iş kaydını silmek istiyor musun?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteJob(job.id);
+      setMessage("İş kaydı silindi.");
+      await loadData();
+    } catch (error) {
+      setMessage(`Hata: ${error.message}`);
+    }
+  }
+
+  async function handleMarkJobCompleted(job) {
+    try {
+      await updateJob(job.id, {
+        status: "completed"
+      });
+
+      setMessage("İş tamamlandı olarak işaretlendi.");
+      await loadData();
+    } catch (error) {
+      setMessage(`Hata: ${error.message}`);
+    }
+  }
+
+  async function handleMarkJobPaid(job) {
+    try {
+      await updateJob(job.id, {
+        paymentStatus: "paid"
+      });
+
+      setMessage("Ödeme ödendi olarak işaretlendi.");
       await loadData();
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
@@ -285,9 +353,21 @@ function App() {
             ) : (
               customers.map((customer) => (
                 <div className="list-item" key={customer.id}>
-                  <strong>{customer.name}</strong>
-                  <span>{customer.phone || "Telefon yok"}</span>
-                  <small>{customer.address || "Adres yok"}</small>
+                  <div>
+                    <strong>{customer.name}</strong>
+                    <span>{customer.phone || "Telefon yok"}</span>
+                    <small>{customer.address || "Adres yok"}</small>
+                  </div>
+
+                  <div className="list-actions">
+                    <button
+                      type="button"
+                      className="danger-button"
+                      onClick={() => handleDeleteCustomer(customer)}
+                    >
+                      Sil
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -303,12 +383,42 @@ function App() {
             ) : (
               jobs.map((job) => (
                 <div className="list-item" key={job.id}>
-                  <strong>{job.title}</strong>
-                  <span>{job.customer?.name || "Müşteri yok"}</span>
-                  <small>
-                    {job.status} · {job.paymentStatus} ·{" "}
-                    {Number(job.price || 0).toLocaleString("tr-TR")} TL
-                  </small>
+                  <div>
+                    <strong>{job.title}</strong>
+                    <span>{job.customer?.name || "Müşteri yok"}</span>
+                    <small>
+                      {job.status} · {job.paymentStatus} ·{" "}
+                      {Number(job.price || 0).toLocaleString("tr-TR")} TL
+                    </small>
+                  </div>
+
+                  <div className="list-actions">
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      disabled={job.status === "completed"}
+                      onClick={() => handleMarkJobCompleted(job)}
+                    >
+                      Tamamlandı
+                    </button>
+
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      disabled={job.paymentStatus === "paid"}
+                      onClick={() => handleMarkJobPaid(job)}
+                    >
+                      Ödendi
+                    </button>
+
+                    <button
+                      type="button"
+                      className="danger-button"
+                      onClick={() => handleDeleteJob(job)}
+                    >
+                      Sil
+                    </button>
+                  </div>
                 </div>
               ))
             )}
