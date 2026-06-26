@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import AuthScreen from "./components/AuthScreen";
 import {
   createCustomer,
   createJob,
@@ -7,6 +8,9 @@ import {
   deleteJob,
   getCustomers,
   getJobs,
+  getMe,
+  getToken,
+  logout,
   updateCustomer,
   updateJob
 } from "./services/api";
@@ -38,7 +42,9 @@ function App() {
   const [jobSearch, setJobSearch] = useState("");
   const [jobStatusFilter, setJobStatusFilter] = useState("all");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authUser, setAuthUser] = useState(null);
   const [message, setMessage] = useState("");
 
   const totalRevenue = useMemo(() => {
@@ -107,8 +113,31 @@ function App() {
   }
 
   useEffect(() => {
-    loadData();
+    async function loadSession() {
+      if (!getToken()) {
+        setAuthLoading(false);
+        return;
+      }
+
+      try {
+        const response = await getMe();
+        setAuthUser(response.data.user);
+      } catch {
+        logout();
+        setAuthUser(null);
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+
+    loadSession();
   }, []);
+
+  useEffect(() => {
+    if (authUser) {
+      loadData();
+    }
+  }, [authUser]);
 
   function updateCustomerForm(event) {
     const { name, value } = event.target;
@@ -280,6 +309,26 @@ function App() {
     }
   }
 
+  function handleLogout() {
+    logout();
+    setAuthUser(null);
+    setCustomers([]);
+    setJobs([]);
+    setMessage("");
+  }
+
+  if (authLoading) {
+    return (
+      <main className="app-shell">
+        <p className="message">Oturum kontrol ediliyor...</p>
+      </main>
+    );
+  }
+
+  if (!authUser) {
+    return <AuthScreen onAuthSuccess={setAuthUser} />;
+  }
+
   return (
     <main className="app-shell">
       <section className="hero">
@@ -289,6 +338,13 @@ function App() {
           Müşteri, servis işi ve ödeme durumlarını PostgreSQL destekli API üzerinden
           yöneten full-stack uygulama.
         </p>
+
+        <div className="session-bar">
+          <span>{authUser.email}</span>
+          <button type="button" className="secondary-button" onClick={handleLogout}>
+            Çıkış Yap
+          </button>
+        </div>
       </section>
 
       <section className="stats-grid">
