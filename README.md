@@ -4,22 +4,56 @@
 
 Bu proje, mevcut local-first İşlik fikrinin full-stack cloud sürümüdür. Amaç; teknik servis, tamirci, saha hizmeti veren küçük işletmeler ve bireysel çalışanlar için müşteri ve iş süreçlerini tek panelden yönetilebilir hale getirmektir.
 
+## Durum
+
+Proje aktif geliştirme aşamasındadır ve şu anda çalışan bir full-stack MVP seviyesindedir.
+
+- React frontend
+- Express backend
+- PostgreSQL veritabanı
+- Prisma ORM ve migration yapısı
+- JWT tabanlı kullanıcı girişi
+- Kullanıcıya özel müşteri ve iş kayıtları
+- API integration testleri
+- GitHub Actions CI
+
 ## Özellikler
+
+### Kullanıcı ve Güvenlik
+
+- Kullanıcı kayıt olma
+- Kullanıcı giriş yapma
+- JWT token ile oturum yönetimi
+- Korumalı API endpointleri
+- Kullanıcıya özel veri izolasyonu
+- Başka kullanıcının müşteri veya iş kayıtlarına erişimi engelleme
+
+### Müşteri Yönetimi
 
 - Müşteri oluşturma
 - Müşteri listeleme
+- Müşteri düzenleme
 - Müşteri silme
+- Müşteri arama
+
+### İş Yönetimi
+
 - İş kaydı oluşturma
 - İş listeleme
+- İş düzenleme
 - İş silme
-- İş durumunu tamamlandı yapma
-- Ödeme durumunu ödendi yapma
+- İş durumunu değiştirme
+- Ödeme durumunu değiştirme
+- Öncelik ve randevu alanları
+- İş arama ve filtreleme
+
+### Panel
+
+- Müşteri sayısı
+- İş kaydı sayısı
+- Bekleyen iş sayısı
+- Ödenmiş gelir toplamı
 - Dashboard istatistikleri
-- PostgreSQL veritabanı
-- Prisma migration yapısı
-- API integration testleri
-- Frontend build kontrolü
-- GitHub Actions CI
 
 ## Teknolojiler
 
@@ -29,6 +63,7 @@ Bu proje, mevcut local-first İşlik fikrinin full-stack cloud sürümüdür. Am
 - Vite
 - CSS
 - Fetch API
+- Component tabanlı yapı
 
 ### Backend
 
@@ -36,6 +71,8 @@ Bu proje, mevcut local-first İşlik fikrinin full-stack cloud sürümüdür. Am
 - Express.js
 - Prisma ORM
 - PostgreSQL
+- JWT
+- bcryptjs
 - CORS
 - dotenv
 
@@ -61,6 +98,7 @@ islik-cloud/
 │   │   │   └── schema.prisma
 │   │   ├── src/
 │   │   │   ├── lib/
+│   │   │   ├── middleware/
 │   │   │   ├── routes/
 │   │   │   ├── app.js
 │   │   │   └── server.js
@@ -69,6 +107,7 @@ islik-cloud/
 │   │   └── package.json
 │   └── web/
 │       ├── src/
+│       │   ├── components/
 │       │   ├── services/
 │       │   ├── App.jsx
 │       │   └── App.css
@@ -107,6 +146,13 @@ Backend environment dosyasını oluştur:
 cp .env.example .env
 ```
 
+Backend `.env` örneği:
+
+```env
+DATABASE_URL="postgresql://islik:islik_password@localhost:5432/islik_cloud"
+JWT_SECRET="local-dev-secret"
+```
+
 Prisma migration çalıştır:
 
 ```bash
@@ -138,6 +184,12 @@ Frontend environment dosyasını oluştur:
 cp .env.example .env
 ```
 
+Frontend `.env` örneği:
+
+```env
+VITE_API_URL=http://localhost:4000
+```
+
 Frontend'i başlat:
 
 ```bash
@@ -150,24 +202,6 @@ Frontend varsayılan olarak şu adreste çalışır:
 http://localhost:5173
 ```
 
-## Environment Variables
-
-### Backend
-
-`apps/api/.env`
-
-```env
-DATABASE_URL="postgresql://islik:islik_password@localhost:5432/islik_cloud"
-```
-
-### Frontend
-
-`apps/web/.env`
-
-```env
-VITE_API_URL=http://localhost:4000
-```
-
 ## API Endpointleri
 
 ### Health
@@ -176,7 +210,17 @@ VITE_API_URL=http://localhost:4000
 GET /health
 ```
 
+### Auth
+
+```http
+POST /api/auth/register
+POST /api/auth/login
+GET  /api/auth/me
+```
+
 ### Customers
+
+Bu endpointler authentication gerektirir.
 
 ```http
 GET    /api/customers
@@ -186,15 +230,9 @@ PUT    /api/customers/:id
 DELETE /api/customers/:id
 ```
 
-Örnek müşteri oluşturma:
-
-```bash
-curl -X POST http://localhost:4000/api/customers \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Ahmet Yılmaz","phone":"05551234567","address":"İstanbul","note":"Test müşterisi"}'
-```
-
 ### Jobs
+
+Bu endpointler authentication gerektirir.
 
 ```http
 GET    /api/jobs
@@ -204,13 +242,14 @@ PUT    /api/jobs/:id
 DELETE /api/jobs/:id
 ```
 
-Örnek iş oluşturma:
+## Veri İzolasyonu
 
-```bash
-curl -X POST http://localhost:4000/api/jobs \
-  -H "Content-Type: application/json" \
-  -d '{"customerId":"CUSTOMER_ID","title":"Klima bakımı","description":"Yıllık servis kontrolü","price":1200,"status":"pending","paymentStatus":"unpaid"}'
-```
+Uygulamada her kullanıcı yalnızca kendi müşteri ve iş kayıtlarını görebilir.
+
+- Customer kayıtları `userId` ile kullanıcıya bağlanır.
+- Job kayıtları Customer ilişkisi üzerinden kullanıcıya göre filtrelenir.
+- Başka kullanıcının customer veya job id'si ile işlem yapılması 404 veya 400 ile engellenir.
+- Bu davranış API integration testleriyle kontrol edilir.
 
 ## Testler
 
@@ -236,6 +275,7 @@ Projede iki ayrı CI workflow vardır.
 
 - `npm ci`
 - `npx prisma migrate deploy`
+- `npx prisma generate`
 - `npm test`
 - API health check
 
@@ -260,21 +300,20 @@ Bu proje adım adım PR akışıyla geliştirilmiştir:
 - Job CRUD API yazıldı
 - API integration testleri eklendi
 - Frontend backend API'ye bağlandı
-- Silme ve durum aksiyonları eklendi
+- Düzenleme, silme ve durum aksiyonları eklendi
+- Arama ve filtreleme eklendi
+- JWT authentication eklendi
+- Kullanıcıya özel veri izolasyonu eklendi
+- Frontend component yapısı düzenlendi
 
 ## Sıradaki Aşamalar
 
-- Kullanıcı kayıt / giriş sistemi
-- JWT authentication
-- Workspace / işletme yapısı
-- Yetkilendirme
-- Müşteri düzenleme ekranı
-- İş düzenleme ekranı
-- Arama ve filtreleme
 - Deploy
 - Demo kullanıcı
 - Ekran görüntüleri
 - Swagger / OpenAPI dokümantasyonu
+- Workspace / işletme yapısı
+- Rol ve yetki yönetimi
 
 ## Not
 
