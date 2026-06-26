@@ -10,9 +10,12 @@ Production ortamında backend için gerekli değişkenler:
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
 JWT_SECRET="strong-production-secret"
 NODE_ENV="production"
+CORS_ORIGIN="https://frontend-domain.example.com"
 ```
 
 Not: `JWT_SECRET` güçlü ve tahmin edilemez olmalıdır. Repo içine gerçek secret yazılmamalıdır.
+
+`CORS_ORIGIN`, frontend'in production adresi olmalıdır. Birden fazla frontend adresi gerekiyorsa virgülle ayrılabilir.
 
 ## 2. Frontend ortam değişkenleri
 

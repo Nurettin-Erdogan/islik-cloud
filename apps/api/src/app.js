@@ -8,7 +8,23 @@ const { requireAuth } = require("./middleware/auth");
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (allowedOrigins.length === 0 || !origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    }
+  })
+);
 app.use(express.json());
 
 app.get("/health", (req, res) => {
@@ -31,6 +47,14 @@ app.use((req, res) => {
 });
 
 app.use((error, req, res, next) => {
+  if (error.message === "Not allowed by CORS") {
+    return res.status(403).json({
+      error: {
+        message: "Origin not allowed."
+      }
+    });
+  }
+
   if (error.code === "P2025") {
     return res.status(404).json({
       error: {
