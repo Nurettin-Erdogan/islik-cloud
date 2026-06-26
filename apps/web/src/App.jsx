@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import AuthScreen from "./components/AuthScreen";
+import CustomerForm from "./components/CustomerForm";
+import CustomerList from "./components/CustomerList";
+import DashboardHeader from "./components/DashboardHeader";
+import FiltersPanel from "./components/FiltersPanel";
+import JobForm from "./components/JobForm";
+import JobList from "./components/JobList";
+import StatsGrid from "./components/StatsGrid";
 import {
   createCustomer,
   createJob,
@@ -331,358 +338,65 @@ function App() {
 
   return (
     <main className="app-shell">
-      <section className="hero">
-        <p className="eyebrow">İşlik Cloud</p>
-        <h1>Küçük servis işletmeleri için iş takip paneli</h1>
-        <p className="hero-text">
-          Müşteri, servis işi ve ödeme durumlarını PostgreSQL destekli API üzerinden
-          yöneten full-stack uygulama.
-        </p>
+      <DashboardHeader userEmail={authUser.email} onLogout={handleLogout} />
 
-        <div className="session-bar">
-          <span>{authUser.email}</span>
-          <button type="button" className="secondary-button" onClick={handleLogout}>
-            Çıkış Yap
-          </button>
-        </div>
-      </section>
+      <StatsGrid
+        customerCount={customers.length}
+        jobCount={jobs.length}
+        pendingJobs={pendingJobs}
+        totalRevenue={totalRevenue}
+      />
 
-      <section className="stats-grid">
-        <article className="stat-card">
-          <span>Müşteri</span>
-          <strong>{customers.length}</strong>
-        </article>
-
-        <article className="stat-card">
-          <span>İş Kaydı</span>
-          <strong>{jobs.length}</strong>
-        </article>
-
-        <article className="stat-card">
-          <span>Bekleyen İş</span>
-          <strong>{pendingJobs}</strong>
-        </article>
-
-        <article className="stat-card">
-          <span>Ödenmiş Gelir</span>
-          <strong>{totalRevenue.toLocaleString("tr-TR")} TL</strong>
-        </article>
-      </section>
-
-      <section className="panel filter-panel">
-        <div>
-          <h2>Arama ve Filtreler</h2>
-          <p>Müşteri ve iş kayıtlarını hızlıca bul.</p>
-        </div>
-
-        <div className="filter-grid">
-          <label>
-            Müşteri Ara
-            <input
-              value={customerSearch}
-              onChange={(event) => setCustomerSearch(event.target.value)}
-              placeholder="Ad, telefon, adres veya not ara"
-            />
-          </label>
-
-          <label>
-            İş Ara
-            <input
-              value={jobSearch}
-              onChange={(event) => setJobSearch(event.target.value)}
-              placeholder="İş başlığı, açıklama veya müşteri ara"
-            />
-          </label>
-
-          <label>
-            İş Durumu
-            <select
-              value={jobStatusFilter}
-              onChange={(event) => setJobStatusFilter(event.target.value)}
-            >
-              <option value="all">Tüm durumlar</option>
-              <option value="pending">Bekliyor</option>
-              <option value="in_progress">Devam ediyor</option>
-              <option value="completed">Tamamlandı</option>
-              <option value="cancelled">İptal edildi</option>
-            </select>
-          </label>
-
-          <label>
-            Ödeme Durumu
-            <select
-              value={paymentStatusFilter}
-              onChange={(event) => setPaymentStatusFilter(event.target.value)}
-            >
-              <option value="all">Tüm ödemeler</option>
-              <option value="unpaid">Ödenmedi</option>
-              <option value="partial">Kısmi ödendi</option>
-              <option value="paid">Ödendi</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="filter-summary">
-          <span>{filteredCustomers.length} müşteri gösteriliyor</span>
-          <span>{filteredJobs.length} iş gösteriliyor</span>
-          <button type="button" className="secondary-button" onClick={resetFilters}>
-            Filtreleri Temizle
-          </button>
-        </div>
-      </section>
+      <FiltersPanel
+        customerSearch={customerSearch}
+        jobSearch={jobSearch}
+        jobStatusFilter={jobStatusFilter}
+        paymentStatusFilter={paymentStatusFilter}
+        filteredCustomerCount={filteredCustomers.length}
+        filteredJobCount={filteredJobs.length}
+        onCustomerSearchChange={setCustomerSearch}
+        onJobSearchChange={setJobSearch}
+        onJobStatusFilterChange={setJobStatusFilter}
+        onPaymentStatusFilterChange={setPaymentStatusFilter}
+        onResetFilters={resetFilters}
+      />
 
       {message ? <p className="message">{message}</p> : null}
       {loading ? <p className="message">Veriler yükleniyor...</p> : null}
 
       <section className="workspace-grid">
-        <form className="panel" onSubmit={handleCustomerSubmit}>
-          <h2>{editingCustomerId ? "Müşteri Düzenle" : "Müşteri Ekle"}</h2>
+        <CustomerForm
+          form={customerForm}
+          editingCustomerId={editingCustomerId}
+          onChange={updateCustomerForm}
+          onSubmit={handleCustomerSubmit}
+          onReset={resetCustomerForm}
+        />
 
-          <label>
-            Ad Soyad
-            <input
-              name="name"
-              value={customerForm.name}
-              onChange={updateCustomerForm}
-              placeholder="Ahmet Yılmaz"
-              required
-            />
-          </label>
-
-          <label>
-            Telefon
-            <input
-              name="phone"
-              value={customerForm.phone}
-              onChange={updateCustomerForm}
-              placeholder="05551234567"
-            />
-          </label>
-
-          <label>
-            Adres
-            <input
-              name="address"
-              value={customerForm.address}
-              onChange={updateCustomerForm}
-              placeholder="İstanbul"
-            />
-          </label>
-
-          <label>
-            Not
-            <textarea
-              name="note"
-              value={customerForm.note}
-              onChange={updateCustomerForm}
-              placeholder="Müşteri notu"
-            />
-          </label>
-
-          <div className="form-actions">
-            <button type="submit">
-              {editingCustomerId ? "Müşteriyi Güncelle" : "Müşteri Kaydet"}
-            </button>
-
-            {editingCustomerId ? (
-              <button type="button" className="secondary-button" onClick={resetCustomerForm}>
-                Vazgeç
-              </button>
-            ) : null}
-          </div>
-        </form>
-
-        <form className="panel" onSubmit={handleJobSubmit}>
-          <h2>{editingJobId ? "İş Kaydı Düzenle" : "İş Kaydı Ekle"}</h2>
-
-          <label>
-            Müşteri
-            <select
-              name="customerId"
-              value={jobForm.customerId}
-              onChange={updateJobForm}
-              required
-            >
-              <option value="">Müşteri seç</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            İş Başlığı
-            <input
-              name="title"
-              value={jobForm.title}
-              onChange={updateJobForm}
-              placeholder="Klima bakımı"
-              required
-            />
-          </label>
-
-          <label>
-            Açıklama
-            <textarea
-              name="description"
-              value={jobForm.description}
-              onChange={updateJobForm}
-              placeholder="Yıllık servis kontrolü"
-            />
-          </label>
-
-          <label>
-            Fiyat
-            <input
-              name="price"
-              type="number"
-              min="0"
-              value={jobForm.price}
-              onChange={updateJobForm}
-              placeholder="1200"
-            />
-          </label>
-
-          <label>
-            Durum
-            <select name="status" value={jobForm.status} onChange={updateJobForm}>
-              <option value="pending">Bekliyor</option>
-              <option value="in_progress">Devam ediyor</option>
-              <option value="completed">Tamamlandı</option>
-              <option value="cancelled">İptal edildi</option>
-            </select>
-          </label>
-
-          <label>
-            Ödeme
-            <select
-              name="paymentStatus"
-              value={jobForm.paymentStatus}
-              onChange={updateJobForm}
-            >
-              <option value="unpaid">Ödenmedi</option>
-              <option value="partial">Kısmi ödendi</option>
-              <option value="paid">Ödendi</option>
-            </select>
-          </label>
-
-          <div className="form-actions">
-            <button type="submit" disabled={customers.length === 0}>
-              {editingJobId ? "İşi Güncelle" : "İş Kaydet"}
-            </button>
-
-            {editingJobId ? (
-              <button type="button" className="secondary-button" onClick={resetJobForm}>
-                Vazgeç
-              </button>
-            ) : null}
-          </div>
-
-          {customers.length === 0 ? (
-            <small>İş eklemek için önce müşteri oluştur.</small>
-          ) : null}
-        </form>
+        <JobForm
+          form={jobForm}
+          customers={customers}
+          editingJobId={editingJobId}
+          onChange={updateJobForm}
+          onSubmit={handleJobSubmit}
+          onReset={resetJobForm}
+        />
       </section>
 
       <section className="workspace-grid">
-        <article className="panel">
-          <h2>Müşteriler</h2>
+        <CustomerList
+          customers={filteredCustomers}
+          onEdit={startEditCustomer}
+          onDelete={handleDeleteCustomer}
+        />
 
-          <div className="list">
-            {filteredCustomers.length === 0 ? (
-              <p>Filtreye uygun müşteri yok.</p>
-            ) : (
-              filteredCustomers.map((customer) => (
-                <div className="list-item" key={customer.id}>
-                  <div>
-                    <strong>{customer.name}</strong>
-                    <span>{customer.phone || "Telefon yok"}</span>
-                    <small>{customer.address || "Adres yok"}</small>
-                  </div>
-
-                  <div className="list-actions">
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={() => startEditCustomer(customer)}
-                    >
-                      Düzenle
-                    </button>
-
-                    <button
-                      type="button"
-                      className="danger-button"
-                      onClick={() => handleDeleteCustomer(customer)}
-                    >
-                      Sil
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </article>
-
-        <article className="panel">
-          <h2>İşler</h2>
-
-          <div className="list">
-            {filteredJobs.length === 0 ? (
-              <p>Filtreye uygun iş kaydı yok.</p>
-            ) : (
-              filteredJobs.map((job) => (
-                <div className="list-item" key={job.id}>
-                  <div>
-                    <strong>{job.title}</strong>
-                    <span>{job.customer?.name || "Müşteri yok"}</span>
-                    <small>
-                      {job.status} · {job.paymentStatus} ·{" "}
-                      {Number(job.price || 0).toLocaleString("tr-TR")} TL
-                    </small>
-                  </div>
-
-                  <div className="list-actions">
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={() => startEditJob(job)}
-                    >
-                      Düzenle
-                    </button>
-
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      disabled={job.status === "completed"}
-                      onClick={() => handleMarkJobCompleted(job)}
-                    >
-                      Tamamlandı
-                    </button>
-
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      disabled={job.paymentStatus === "paid"}
-                      onClick={() => handleMarkJobPaid(job)}
-                    >
-                      Ödendi
-                    </button>
-
-                    <button
-                      type="button"
-                      className="danger-button"
-                      onClick={() => handleDeleteJob(job)}
-                    >
-                      Sil
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </article>
+        <JobList
+          jobs={filteredJobs}
+          onEdit={startEditJob}
+          onMarkCompleted={handleMarkJobCompleted}
+          onMarkPaid={handleMarkJobPaid}
+          onDelete={handleDeleteJob}
+        />
       </section>
     </main>
   );
