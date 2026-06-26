@@ -26,7 +26,7 @@ function normalizeOptionalString(value, fieldName) {
 
   if (typeof value !== "string") {
     return {
-      error: `${fieldName} must be a string.`
+      error: fieldName + " must be a string."
     };
   }
 
@@ -40,7 +40,7 @@ function normalizeOptionalString(value, fieldName) {
 function normalizeRequiredString(value, fieldName, minLength = 1) {
   if (typeof value !== "string" || value.trim().length < minLength) {
     return {
-      error: `${fieldName} is required.`
+      error: fieldName + " is required."
     };
   }
 
@@ -58,7 +58,7 @@ function normalizeEnum(value, allowedValues, fieldName, fallback) {
 
   if (typeof value !== "string" || !allowedValues.includes(value)) {
     return {
-      error: `${fieldName} must be one of: ${allowedValues.join(", ")}.`
+      error: fieldName + " must be one of: " + allowedValues.join(", ") + "."
     };
   }
 
@@ -121,9 +121,37 @@ function validationError(res, message) {
   });
 }
 
+async function findOwnedCustomer(customerId, userId) {
+  return prisma.customer.findFirst({
+    where: {
+      id: customerId,
+      userId
+    }
+  });
+}
+
+async function findOwnedJob(jobId, userId) {
+  return prisma.job.findFirst({
+    where: {
+      id: jobId,
+      customer: {
+        userId
+      }
+    },
+    include: {
+      customer: true
+    }
+  });
+}
+
 router.get("/", async (req, res, next) => {
   try {
     const jobs = await prisma.job.findMany({
+      where: {
+        customer: {
+          userId: req.user.id
+        }
+      },
       orderBy: {
         createdAt: "desc"
       },
@@ -170,6 +198,12 @@ router.post("/", async (req, res, next) => {
       return validationError(res, error);
     }
 
+    const ownedCustomer = await findOwnedCustomer(customerId.value, req.user.id);
+
+    if (!ownedCustomer) {
+      return validationError(res, "Related customer was not found.");
+    }
+
     const job = await prisma.job.create({
       data: {
         customerId: customerId.value,
@@ -196,14 +230,7 @@ router.post("/", async (req, res, next) => {
 
 router.get("/:id", async (req, res, next) => {
   try {
-    const job = await prisma.job.findUnique({
-      where: {
-        id: req.params.id
-      },
-      include: {
-        customer: true
-      }
-    });
+    const job = await findOwnedJob(req.params.id, req.user.id);
 
     if (!job) {
       return res.status(404).json({
@@ -223,6 +250,16 @@ router.get("/:id", async (req, res, next) => {
 
 router.put("/:id", async (req, res, next) => {
   try {
+    const existingJob = await findOwnedJob(req.params.id, req.user.id);
+
+    if (!existingJob) {
+      return res.status(404).json({
+        error: {
+          message: "Job not found."
+        }
+      });
+    }
+
     const data = {};
 
     if (hasOwn(req.body, "customerId")) {
@@ -230,6 +267,12 @@ router.put("/:id", async (req, res, next) => {
 
       if (customerId.error) {
         return validationError(res, customerId.error);
+      }
+
+      const ownedCustomer = await findOwnedCustomer(customerId.value, req.user.id);
+
+      if (!ownedCustomer) {
+        return validationError(res, "Related customer was not found.");
       }
 
       data.customerId = customerId.value;
@@ -329,6 +372,16 @@ router.put("/:id", async (req, res, next) => {
 
 router.delete("/:id", async (req, res, next) => {
   try {
+    const existingJob = await findOwnedJob(req.params.id, req.user.id);
+
+    if (!existingJob) {
+      return res.status(404).json({
+        error: {
+          message: "Job not found."
+        }
+      });
+    }
+
     await prisma.job.delete({
       where: {
         id: req.params.id

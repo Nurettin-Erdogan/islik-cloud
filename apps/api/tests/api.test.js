@@ -268,3 +268,104 @@ test("job validation rejects invalid fields", async () => {
     })
     .expect(400);
 });
+
+test("users can only access their own customers and jobs", async () => {
+  const firstToken = await createAuthToken();
+  const secondToken = await createAuthToken();
+
+  const firstCustomerResponse = await request(app)
+    .post("/api/customers")
+    .set("Authorization", "Bearer " + firstToken)
+    .send({
+      name: "First User Customer"
+    })
+    .expect(201);
+
+  const secondCustomerResponse = await request(app)
+    .post("/api/customers")
+    .set("Authorization", "Bearer " + secondToken)
+    .send({
+      name: "Second User Customer"
+    })
+    .expect(201);
+
+  const firstCustomerId = firstCustomerResponse.body.data.id;
+  const secondCustomerId = secondCustomerResponse.body.data.id;
+
+  const firstJobResponse = await request(app)
+    .post("/api/jobs")
+    .set("Authorization", "Bearer " + firstToken)
+    .send({
+      customerId: firstCustomerId,
+      title: "First User Job"
+    })
+    .expect(201);
+
+  const firstJobId = firstJobResponse.body.data.id;
+
+  const firstCustomerList = await request(app)
+    .get("/api/customers")
+    .set("Authorization", "Bearer " + firstToken)
+    .expect(200);
+
+  assert.equal(firstCustomerList.body.data.length, 1);
+  assert.equal(firstCustomerList.body.data[0].id, firstCustomerId);
+
+  const secondCustomerList = await request(app)
+    .get("/api/customers")
+    .set("Authorization", "Bearer " + secondToken)
+    .expect(200);
+
+  assert.equal(secondCustomerList.body.data.length, 1);
+  assert.equal(secondCustomerList.body.data[0].id, secondCustomerId);
+
+  const firstJobList = await request(app)
+    .get("/api/jobs")
+    .set("Authorization", "Bearer " + firstToken)
+    .expect(200);
+
+  assert.equal(firstJobList.body.data.length, 1);
+  assert.equal(firstJobList.body.data[0].id, firstJobId);
+
+  const secondJobList = await request(app)
+    .get("/api/jobs")
+    .set("Authorization", "Bearer " + secondToken)
+    .expect(200);
+
+  assert.equal(secondJobList.body.data.length, 0);
+
+  await request(app)
+    .get("/api/customers/" + firstCustomerId)
+    .set("Authorization", "Bearer " + secondToken)
+    .expect(404);
+
+  await request(app)
+    .put("/api/customers/" + firstCustomerId)
+    .set("Authorization", "Bearer " + secondToken)
+    .send({
+      name: "Hacked Customer"
+    })
+    .expect(404);
+
+  await request(app)
+    .get("/api/jobs/" + firstJobId)
+    .set("Authorization", "Bearer " + secondToken)
+    .expect(404);
+
+  await request(app)
+    .put("/api/jobs/" + firstJobId)
+    .set("Authorization", "Bearer " + secondToken)
+    .send({
+      title: "Hacked Job"
+    })
+    .expect(404);
+
+  await request(app)
+    .post("/api/jobs")
+    .set("Authorization", "Bearer " + secondToken)
+    .send({
+      customerId: firstCustomerId,
+      title: "Invalid cross-user job"
+    })
+    .expect(400);
+});

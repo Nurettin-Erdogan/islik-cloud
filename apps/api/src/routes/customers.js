@@ -15,6 +15,9 @@ function normalizeOptionalString(value) {
 router.get("/", async (req, res, next) => {
   try {
     const customers = await prisma.customer.findMany({
+      where: {
+        userId: req.user.id
+      },
       orderBy: {
         createdAt: "desc"
       },
@@ -49,6 +52,7 @@ router.post("/", async (req, res, next) => {
 
     const customer = await prisma.customer.create({
       data: {
+        userId: req.user.id,
         name: name.trim(),
         phone: normalizeOptionalString(phone),
         address: normalizeOptionalString(address),
@@ -66,9 +70,10 @@ router.post("/", async (req, res, next) => {
 
 router.get("/:id", async (req, res, next) => {
   try {
-    const customer = await prisma.customer.findUnique({
+    const customer = await prisma.customer.findFirst({
       where: {
-        id: req.params.id
+        id: req.params.id,
+        userId: req.user.id
       },
       include: {
         jobs: {
@@ -107,6 +112,21 @@ router.put("/:id", async (req, res, next) => {
       });
     }
 
+    const existingCustomer = await prisma.customer.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.user.id
+      }
+    });
+
+    if (!existingCustomer) {
+      return res.status(404).json({
+        error: {
+          message: "Customer not found."
+        }
+      });
+    }
+
     const customer = await prisma.customer.update({
       where: {
         id: req.params.id
@@ -129,11 +149,20 @@ router.put("/:id", async (req, res, next) => {
 
 router.delete("/:id", async (req, res, next) => {
   try {
-    await prisma.customer.delete({
+    const result = await prisma.customer.deleteMany({
       where: {
-        id: req.params.id
+        id: req.params.id,
+        userId: req.user.id
       }
     });
+
+    if (result.count === 0) {
+      return res.status(404).json({
+        error: {
+          message: "Customer not found."
+        }
+      });
+    }
 
     res.status(204).send();
   } catch (error) {
