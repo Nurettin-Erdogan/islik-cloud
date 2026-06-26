@@ -1,0 +1,79 @@
+function FiltersPanel({
+  customerSearch,
+  jobSearch,
+  jobStatusFilter,
+  paymentStatusFilter,
+  filteredCustomerCount,
+  filteredJobCount,
+  onCustomerSearchChange,
+  onJobSearchChange,
+  onJobStatusFilterChange,
+  onPaymentStatusFilterChange,
+  onResetFilters
+}) {
+  return (
+    <section className="panel filter-panel">
+      <div>
+        <h2>Arama ve Filtreler</h2>
+        <p>Müşteri ve iş kayıtlarını hızlıca bul.</p>
+      </div>
+
+      <div className="filter-grid">
+        <label>
+          Müşteri Ara
+          <input
+            value={customerSearch}
+            onChange={(event) => onCustomerSearchChange(event.target.value)}
+            placeholder="Ad, telefon, adres veya not ara"
+          />
+        </label>
+
+        <label>
+          İş Ara
+          <input
+            value={jobSearch}
+            onChange={(event) => onJobSearchChange(event.target.value)}
+            placeholder="İş başlığı, açıklama veya müşteri ara"
+          />
+        </label>
+
+        <label>
+          İş Durumu
+          <select
+            value={jobStatusFilter}
+            onChange={(event) => onJobStatusFilterChange(event.target.value)}
+          >
+            <option value="all">Tüm durumlar</option>
+            <option value="pending">Bekliyor</option>
+            <option value="in_progress">Devam ediyor</option>
+            <option value="completed">Tamamlandı</option>
+            <option value="cancelled">İptal edildi</option>
+          </select>
+        </label>
+
+        <label>
+          Ödeme Durumu
+          <select
+            value={paymentStatusFilter}
+            onChange={(event) => onPaymentStatusFilterChange(event.target.value)}
+          >
+            <option value="all">Tüm ödemeler</option>
+            <option value="unpaid">Ödenmedi</option>
+            <option value="partial">Kısmi ödendi</option>
+            <option value="paid">Ödendi</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="filter-summary">
+        <span>{filteredCustomerCount} müşteri gösteriliyor</span>
+        <span>{filteredJobCount} iş gösteriliyor</span>
+        <button type="button" className="secondary-button" onClick={onResetFilters}>
+          Filtreleri Temizle
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export default FiltersPanel;
