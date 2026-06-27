@@ -13,6 +13,27 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+function securityHeaders(req, res, next) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  next();
+}
+
+function requestLogger(req, res, next) {
+  const startedAt = Date.now();
+
+  res.on("finish", () => {
+    const durationMs = Date.now() - startedAt;
+    console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs}ms`);
+  });
+
+  next();
+}
+
+app.use(securityHeaders);
+app.use(requestLogger);
+
 app.use(
   cors({
     origin(origin, callback) {
@@ -25,7 +46,7 @@ app.use(
     }
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (req, res) => {
   res.json({
