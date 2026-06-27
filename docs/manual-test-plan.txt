@@ -1,0 +1,15 @@
+Manual Test Plan
+
+1. Open frontend.
+2. Create account.
+3. Login.
+4. Add customer.
+5. Add job.
+6. Update job status.
+7. Update payment status.
+8. Refresh page.
+9. Logout.
+10. Login again.
+11. Check saved data.
+
+Expected result: The app works end to end and saved data stays visible after refresh and login.
