@@ -4,9 +4,17 @@
 
 Bu proje, mevcut local-first İşlik fikrinin full-stack cloud sürümüdür. Amaç; teknik servis, tamirci, saha hizmeti veren küçük işletmeler ve bireysel çalışanlar için müşteri ve iş süreçlerini tek panelden yönetilebilir hale getirmektir.
 
+## Canlı Demo
+
+- Frontend: https://islik-cloud.vercel.app
+- Backend API: https://islik-cloud-api.onrender.com
+- Health check: https://islik-cloud-api.onrender.com/health
+
+Not: Backend Render Free üzerinde çalıştığı için uzun süre istek gelmezse uyku moduna geçebilir. İlk istek 30-60 saniye gecikebilir.
+
 ## Durum
 
-Proje aktif geliştirme aşamasındadır ve şu anda çalışan bir full-stack MVP seviyesindedir.
+Proje aktif geliştirme aşamasındadır ve şu anda deploy edilmiş çalışan bir full-stack MVP seviyesindedir.
 
 - React frontend
 - Express backend
@@ -16,6 +24,8 @@ Proje aktif geliştirme aşamasındadır ve şu anda çalışan bir full-stack M
 - Kullanıcıya özel müşteri ve iş kayıtları
 - API integration testleri
 - GitHub Actions CI
+- Render üzerinde backend deploy
+- Vercel üzerinde frontend deploy
 
 ## Özellikler
 
@@ -64,6 +74,7 @@ Proje aktif geliştirme aşamasındadır ve şu anda çalışan bir full-stack M
 - CSS
 - Fetch API
 - Component tabanlı yapı
+- Vercel deploy
 
 ### Backend
 
@@ -75,6 +86,7 @@ Proje aktif geliştirme aşamasındadır ve şu anda çalışan bir full-stack M
 - bcryptjs
 - CORS
 - dotenv
+- Render deploy
 
 ### Test ve DevOps
 
@@ -82,6 +94,24 @@ Proje aktif geliştirme aşamasındadır ve şu anda çalışan bir full-stack M
 - Supertest
 - Docker Compose
 - GitHub Actions
+- Render PostgreSQL
+
+## Deploy Mimarisi
+
+```text
+Kullanıcı
+   |
+   v
+Vercel Frontend
+   |
+   v
+Render Express API
+   |
+   v
+Render PostgreSQL
+```
+
+Production ortamında frontend `VITE_API_URL` ile Render API adresine bağlanır. Backend tarafında `CORS_ORIGIN` ile Vercel domaini izinli origin olarak tanımlanır.
 
 ## Proje Yapısı
 
@@ -305,15 +335,18 @@ Bu proje adım adım PR akışıyla geliştirilmiştir:
 - JWT authentication eklendi
 - Kullanıcıya özel veri izolasyonu eklendi
 - Frontend component yapısı düzenlendi
+- Demo seed scripti eklendi
+- Render backend deploy tamamlandı
+- Vercel frontend deploy tamamlandı
 
 ## Sıradaki Aşamalar
 
-- Deploy
-- Demo kullanıcı
 - Ekran görüntüleri
 - Swagger / OpenAPI dokümantasyonu
 - Workspace / işletme yapısı
 - Rol ve yetki yönetimi
+- Production secret rotasyonu
+- Custom domain
 
 ## Not
 
