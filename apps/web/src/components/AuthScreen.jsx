@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { login, register } from "../services/api";
+import { useEffect, useState } from "react";
+import { login, register, warmUpApi } from "../services/api";
 
 const initialForm = {
   name: "",
@@ -7,11 +7,38 @@ const initialForm = {
   password: ""
 };
 
+const WARMUP_HINT_DELAY_MS = 1_600;
+const SLOW_SUBMIT_DELAY_MS = 2_400;
+
 function AuthScreen({ onAuthSuccess }) {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [warmupTakingLong, setWarmupTakingLong] = useState(false);
+  const [slowSubmit, setSlowSubmit] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const warmupTimerId = setTimeout(() => {
+      if (isMounted) {
+        setWarmupTakingLong(true);
+      }
+    }, WARMUP_HINT_DELAY_MS);
+
+    warmUpApi().finally(() => {
+      clearTimeout(warmupTimerId);
+
+      if (isMounted) {
+        setWarmupTakingLong(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      clearTimeout(warmupTimerId);
+    };
+  }, []);
 
   function updateForm(event) {
     const { name, value } = event.target;
@@ -43,8 +70,13 @@ function AuthScreen({ onAuthSuccess }) {
       return;
     }
 
+    const slowSubmitTimerId = setTimeout(() => {
+      setSlowSubmit(true);
+    }, SLOW_SUBMIT_DELAY_MS);
+
     try {
       setSubmitting(true);
+      setSlowSubmit(false);
 
       const response =
         mode === "register"
@@ -59,14 +91,23 @@ function AuthScreen({ onAuthSuccess }) {
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
     } finally {
+      clearTimeout(slowSubmitTimerId);
       setSubmitting(false);
+      setSlowSubmit(false);
     }
   }
 
   function switchMode() {
     setMode((current) => (current === "login" ? "register" : "login"));
     setMessage("");
+    setSlowSubmit(false);
   }
+
+  const helperMessage = slowSubmit
+    ? "Sunucu hazırlanıyor olabilir, birazdan devam edeceğiz."
+    : warmupTakingLong && !submitting
+      ? "Bağlantı hazırlanıyor, bilgilerini girmeye devam edebilirsin."
+      : "";
 
   return (
     <main className="auth-shell">
@@ -78,6 +119,7 @@ function AuthScreen({ onAuthSuccess }) {
         </p>
 
         {message ? <p className="message">{message}</p> : null}
+        {helperMessage ? <p className="auth-hint">{helperMessage}</p> : null}
 
         <form className="auth-form" onSubmit={handleSubmit} onKeyDown={submitOnEnter}>
           {mode === "register" ? (
@@ -123,7 +165,13 @@ function AuthScreen({ onAuthSuccess }) {
           </label>
 
           <button type="submit" disabled={submitting}>
-            {submitting ? "Kontrol ediliyor..." : mode === "login" ? "Giriş Yap" : "Kayıt Ol"}
+            {submitting
+              ? slowSubmit
+                ? "Sunucu hazırlanıyor..."
+                : "Kontrol ediliyor..."
+              : mode === "login"
+                ? "Giriş Yap"
+                : "Kayıt Ol"}
           </button>
         </form>
 
