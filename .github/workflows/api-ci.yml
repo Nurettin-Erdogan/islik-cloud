@@ -40,6 +40,8 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://islik:islik_password@localhost:5432/islik_cloud
+      JWT_SECRET: ci-test-secret
+      AUTH_RATE_LIMIT_MAX: 100
 
     steps:
       - name: Checkout
