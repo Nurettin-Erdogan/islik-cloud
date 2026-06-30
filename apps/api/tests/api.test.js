@@ -72,6 +72,17 @@ test("auth register, login and me work", async () => {
   assert.equal(meResponse.body.data.user.email, "auth@example.com");
 });
 
+test("auth register rejects names with numbers", async () => {
+  await request(app)
+    .post("/api/auth/register")
+    .send({
+      name: "Auth User 123",
+      email: "invalid-name@example.com",
+      password: "secret123"
+    })
+    .expect(400);
+});
+
 test("protected routes reject unauthenticated requests", async () => {
   await request(app).get("/api/customers").expect(401);
   await request(app).get("/api/jobs").expect(401);
@@ -94,6 +105,7 @@ test("customer CRUD flow works", async () => {
   const customer = createResponse.body.data;
 
   assert.equal(customer.name, "Ahmet Yılmaz");
+  assert.equal(customer.phone, "05551234567");
 
   const listResponse = await request(app)
     .get("/api/customers")
@@ -119,6 +131,7 @@ test("customer CRUD flow works", async () => {
     .expect(200);
 
   assert.equal(updateResponse.body.data.name, "Mehmet Yılmaz");
+  assert.equal(updateResponse.body.data.phone, "05550000000");
 
   await request(app)
     .delete(`/api/customers/${customer.id}`)
@@ -129,6 +142,53 @@ test("customer CRUD flow works", async () => {
     .get(`/api/customers/${customer.id}`)
     .set("Authorization", `Bearer ${token}`)
     .expect(404);
+});
+
+test("customer validation rejects numbers in names and letters in phone", async () => {
+  const token = await createAuthToken();
+
+  await request(app)
+    .post("/api/customers")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      name: "Ahmet 123",
+      phone: "05551234567"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/customers")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      name: "Ahmet Yılmaz",
+      phone: "0555ABC4567"
+    })
+    .expect(400);
+
+  const createResponse = await request(app)
+    .post("/api/customers")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      name: "Ayşe Demir",
+      phone: "05551234567"
+    })
+    .expect(201);
+
+  await request(app)
+    .put(`/api/customers/${createResponse.body.data.id}`)
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      name: "Ayşe 9"
+    })
+    .expect(400);
+
+  await request(app)
+    .put(`/api/customers/${createResponse.body.data.id}`)
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      phone: "phone-number"
+    })
+    .expect(400);
 });
 
 test("job CRUD flow works", async () => {
