@@ -5,7 +5,7 @@ function DashboardHeader({ userEmail, onLogout }) {
         <span className="brand-mark">D</span>
         <div>
           <p className="eyebrow">Dükkan Defteri</p>
-          <h1>Operasyon Paneli</h1>
+          <h1>Dükkan Özeti</h1>
         </div>
       </div>
 
