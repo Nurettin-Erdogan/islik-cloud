@@ -1,5 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const TOKEN_KEY = "islik_cloud_token";
+const WARMUP_TIMEOUT_MS = 8_000;
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -15,14 +16,15 @@ export function logout() {
 
 async function request(path, options = {}) {
   const token = getToken();
+  const { headers, ...fetchOptions } = options;
 
   const response = await fetch(`${API_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {})
+      ...(headers || {})
     },
-    ...options
+    ...fetchOptions
   });
 
   if (!response.ok) {
@@ -43,6 +45,23 @@ async function request(path, options = {}) {
   }
 
   return response.json();
+}
+
+export async function warmUpApi() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), WARMUP_TIMEOUT_MS);
+
+  try {
+    await request("/health", {
+      signal: controller.signal
+    });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  return null;
 }
 
 export async function register(payload) {
