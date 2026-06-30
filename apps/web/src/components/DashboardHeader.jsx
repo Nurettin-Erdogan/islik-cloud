@@ -2,9 +2,9 @@ function DashboardHeader({ userEmail, onLogout }) {
   return (
     <header className="dashboard-header">
       <div className="brand-lockup">
-        <span className="brand-mark">İ</span>
+        <span className="brand-mark">D</span>
         <div>
-          <p className="eyebrow">İşlik Cloud</p>
+          <p className="eyebrow">Dükkan Defteri</p>
           <h1>Operasyon Paneli</h1>
         </div>
       </div>
