@@ -4,14 +4,81 @@ const cors = require("cors");
 const authRouter = require("./routes/auth");
 const customersRouter = require("./routes/customers");
 const jobsRouter = require("./routes/jobs");
-const { requireAuth } = require("./middleware/auth");
+const { assertJwtSecret, requireAuth } = require("./middleware/auth");
+
+assertJwtSecret();
 
 const app = express();
+const isProduction = process.env.NODE_ENV === "production";
+
+app.set("trust proxy", 1);
 
 const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+const authRateLimitWindowMs = normalizePositiveInteger(
+  process.env.AUTH_RATE_LIMIT_WINDOW_MS,
+  15 * 60 * 1000
+);
+const authRateLimitMax = normalizePositiveInteger(process.env.AUTH_RATE_LIMIT_MAX, 30);
+
+function normalizePositiveInteger(value, fallback) {
+  const numberValue = Number(value);
+
+  if (!Number.isInteger(numberValue) || numberValue <= 0) {
+    return fallback;
+  }
+
+  return numberValue;
+}
+
+function isOriginAllowed(origin) {
+  if (!origin) {
+    return true;
+  }
+
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  return !isProduction && allowedOrigins.length === 0;
+}
+
+function createRateLimiter({ windowMs, max, message }) {
+  const buckets = new Map();
+
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
+    const bucket = buckets.get(key);
+
+    if (!bucket || bucket.resetAt <= now) {
+      buckets.set(key, {
+        count: 1,
+        resetAt: now + windowMs
+      });
+      next();
+      return;
+    }
+
+    bucket.count += 1;
+
+    if (bucket.count > max) {
+      const retryAfterSeconds = Math.ceil((bucket.resetAt - now) / 1000);
+      res.setHeader("Retry-After", String(retryAfterSeconds));
+      res.status(429).json({
+        error: {
+          message
+        }
+      });
+      return;
+    }
+
+    next();
+  };
+}
 
 function securityHeaders(req, res, next) {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -37,7 +104,7 @@ app.use(requestLogger);
 app.use(
   cors({
     origin(origin, callback) {
-      if (allowedOrigins.length === 0 || !origin || allowedOrigins.includes(origin)) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
         return;
       }
@@ -55,7 +122,15 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use("/api/auth", authRouter);
+app.use(
+  "/api/auth",
+  createRateLimiter({
+    windowMs: authRateLimitWindowMs,
+    max: authRateLimitMax,
+    message: "Too many authentication attempts. Please try again later."
+  }),
+  authRouter
+);
 app.use("/api/customers", requireAuth, customersRouter);
 app.use("/api/jobs", requireAuth, jobsRouter);
 
