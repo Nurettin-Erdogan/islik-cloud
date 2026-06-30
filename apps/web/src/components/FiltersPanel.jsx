@@ -13,9 +13,11 @@ function FiltersPanel({
 }) {
   return (
     <section className="panel filter-panel">
-      <div>
+      <div className="panel-heading">
         <h2>Arama ve Filtreler</h2>
-        <p>Müşteri ve iş kayıtlarını hızlıca bul.</p>
+        <button type="button" className="secondary-button" onClick={onResetFilters}>
+          Temizle
+        </button>
       </div>
 
       <div className="filter-grid">
@@ -66,11 +68,8 @@ function FiltersPanel({
       </div>
 
       <div className="filter-summary">
-        <span>{filteredCustomerCount} müşteri gösteriliyor</span>
-        <span>{filteredJobCount} iş gösteriliyor</span>
-        <button type="button" className="secondary-button" onClick={onResetFilters}>
-          Filtreleri Temizle
-        </button>
+        <span>{filteredCustomerCount} müşteri</span>
+        <span>{filteredJobCount} iş</span>
       </div>
     </section>
   );

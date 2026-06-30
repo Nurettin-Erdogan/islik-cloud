@@ -11,6 +11,7 @@ function AuthScreen({ onAuthSuccess }) {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   function updateForm(event) {
     const { name, value } = event.target;
@@ -21,10 +22,29 @@ function AuthScreen({ onAuthSuccess }) {
     }));
   }
 
+  function submitOnEnter(event) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    if (event.target.tagName === "TEXTAREA") {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.requestSubmit();
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
+    if (submitting) {
+      return;
+    }
+
     try {
+      setSubmitting(true);
+
       const response =
         mode === "register"
           ? await register(form)
@@ -37,6 +57,8 @@ function AuthScreen({ onAuthSuccess }) {
       onAuthSuccess(response.data.user);
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -56,7 +78,7 @@ function AuthScreen({ onAuthSuccess }) {
 
         {message ? <p className="message">{message}</p> : null}
 
-        <form className="auth-form" onSubmit={handleSubmit}>
+        <form className="auth-form" onSubmit={handleSubmit} onKeyDown={submitOnEnter}>
           {mode === "register" ? (
             <label>
               Ad Soyad
@@ -65,6 +87,7 @@ function AuthScreen({ onAuthSuccess }) {
                 value={form.name}
                 onChange={updateForm}
                 placeholder="Ahmet Yılmaz"
+                autoComplete="name"
               />
             </label>
           ) : null}
@@ -77,6 +100,8 @@ function AuthScreen({ onAuthSuccess }) {
               value={form.email}
               onChange={updateForm}
               placeholder="ornek@mail.com"
+              autoComplete="email"
+              autoFocus
               required
             />
           </label>
@@ -90,12 +115,13 @@ function AuthScreen({ onAuthSuccess }) {
               value={form.password}
               onChange={updateForm}
               placeholder="En az 6 karakter"
+              autoComplete={mode === "register" ? "new-password" : "current-password"}
               required
             />
           </label>
 
-          <button type="submit">
-            {mode === "login" ? "Giriş Yap" : "Kayıt Ol"}
+          <button type="submit" disabled={submitting}>
+            {submitting ? "Kontrol ediliyor..." : mode === "login" ? "Giriş Yap" : "Kayıt Ol"}
           </button>
         </form>
 

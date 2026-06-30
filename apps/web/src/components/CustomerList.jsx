@@ -1,15 +1,18 @@
 function CustomerList({ customers, onEdit, onDelete }) {
   return (
     <article className="panel">
-      <h2>Müşteriler</h2>
+      <div className="panel-heading">
+        <h2>Müşteriler</h2>
+        <span>{customers.length} kayıt</span>
+      </div>
 
       <div className="list">
         {customers.length === 0 ? (
-          <p>Filtreye uygun müşteri yok.</p>
+          <p className="empty-state">Filtreye uygun müşteri yok.</p>
         ) : (
           customers.map((customer) => (
             <div className="list-item" key={customer.id}>
-              <div>
+              <div className="item-main">
                 <strong>{customer.name}</strong>
                 <span>{customer.phone || "Telefon yok"}</span>
                 <small>{customer.address || "Adres yok"}</small>
