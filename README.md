@@ -1,8 +1,8 @@
-# İşlik Cloud
+# Dükkan Defteri
 
-İşlik Cloud; küçük servis işletmeleri için geliştirilen müşteri, iş, ödeme ve operasyon takip panelidir.
+Dükkan Defteri; küçük servis işletmeleri için geliştirilen müşteri, iş, ödeme ve operasyon takip panelidir.
 
-Bu proje, mevcut local-first İşlik fikrinin full-stack cloud sürümüdür. Amaç; teknik servis, tamirci, saha hizmeti veren küçük işletmeler ve bireysel çalışanlar için müşteri ve iş süreçlerini tek panelden yönetilebilir hale getirmektir.
+Bu proje, küçük işletmelerin günlük işlerini daha düzenli takip edebilmesi için geliştirilen full-stack web uygulamasıdır. Amaç; teknik servis, tamirci, saha hizmeti veren küçük işletmeler ve bireysel çalışanlar için müşteri ve iş süreçlerini tek panelden yönetilebilir hale getirmektir.
 
 ## Canlı Demo
 
@@ -45,6 +45,8 @@ Proje aktif geliştirme aşamasındadır ve şu anda deploy edilmiş çalışan 
 - Müşteri düzenleme
 - Müşteri silme
 - Müşteri arama
+- Telefon alanında sadece rakam kabul etme
+- Ad soyad alanında rakam girişini engelleme
 
 ### İş Yönetimi
 
@@ -124,23 +126,12 @@ islik-cloud/
 ├── apps/
 │   ├── api/
 │   │   ├── prisma/
-│   │   │   ├── migrations/
-│   │   │   └── schema.prisma
 │   │   ├── src/
-│   │   │   ├── lib/
-│   │   │   ├── middleware/
-│   │   │   ├── routes/
-│   │   │   ├── app.js
-│   │   │   └── server.js
 │   │   ├── tests/
 │   │   ├── .env.example
 │   │   └── package.json
 │   └── web/
 │       ├── src/
-│       │   ├── components/
-│       │   ├── services/
-│       │   ├── App.jsx
-│       │   └── App.css
 │       ├── .env.example
 │       └── package.json
 ├── docs/
@@ -290,10 +281,11 @@ cd apps/api
 npm test
 ```
 
-Frontend build kontrolü:
+Frontend lint ve build kontrolü:
 
 ```bash
 cd apps/web
+npm run lint
 npm run build
 ```
 
@@ -312,6 +304,7 @@ Projede iki ayrı CI workflow vardır.
 ### Web CI
 
 - `npm ci`
+- `npm run lint`
 - `npm run build`
 
 ## Geliştirme Geçmişi
@@ -338,6 +331,7 @@ Bu proje adım adım PR akışıyla geliştirilmiştir:
 - Demo seed scripti eklendi
 - Render backend deploy tamamlandı
 - Vercel frontend deploy tamamlandı
+- Marka adı Dükkan Defteri olarak güncellendi
 
 ## Sıradaki Aşamalar
 
@@ -350,4 +344,4 @@ Bu proje adım adım PR akışıyla geliştirilmiştir:
 
 ## Not
 
-Bu proje aktif geliştirme aşamasındadır. Amaç, mevcut İşlik fikrini production'a daha yakın full-stack bir cloud uygulamasına dönüştürmektir.
+Bu proje aktif geliştirme aşamasındadır. Amaç, Dükkan Defteri'ni production'a daha yakın full-stack bir işletme takip uygulamasına dönüştürmektir.
