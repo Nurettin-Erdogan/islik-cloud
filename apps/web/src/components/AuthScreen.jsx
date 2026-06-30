@@ -15,10 +15,11 @@ function AuthScreen({ onAuthSuccess }) {
 
   function updateForm(event) {
     const { name, value } = event.target;
+    const nextValue = name === "name" ? value.replace(/\d/g, "") : value;
 
     setForm((current) => ({
       ...current,
-      [name]: value
+      [name]: nextValue
     }));
   }
 
@@ -88,6 +89,7 @@ function AuthScreen({ onAuthSuccess }) {
                 onChange={updateForm}
                 placeholder="Ahmet Yılmaz"
                 autoComplete="name"
+                pattern="[^0-9]*"
               />
             </label>
           ) : null}

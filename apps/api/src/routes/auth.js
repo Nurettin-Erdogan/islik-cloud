@@ -9,6 +9,38 @@ function normalizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
 
+function normalizeName(name) {
+  if (name === undefined || name === null) {
+    return {
+      value: null
+    };
+  }
+
+  if (typeof name !== "string") {
+    return {
+      error: "Name must be a string."
+    };
+  }
+
+  const trimmed = name.trim();
+
+  if (trimmed.length === 0) {
+    return {
+      value: null
+    };
+  }
+
+  if (/\d/.test(trimmed)) {
+    return {
+      error: "Name cannot contain numbers."
+    };
+  }
+
+  return {
+    value: trimmed
+  };
+}
+
 function publicUser(user) {
   return {
     id: user.id,
@@ -22,8 +54,16 @@ function publicUser(user) {
 router.post("/register", async (req, res, next) => {
   try {
     const email = normalizeEmail(req.body.email);
-    const name = typeof req.body.name === "string" ? req.body.name.trim() : null;
+    const name = normalizeName(req.body.name);
     const password = req.body.password;
+
+    if (name.error) {
+      return res.status(400).json({
+        error: {
+          message: name.error
+        }
+      });
+    }
 
     if (!email || !email.includes("@")) {
       return res.status(400).json({
@@ -59,7 +99,7 @@ router.post("/register", async (req, res, next) => {
 
     const user = await prisma.user.create({
       data: {
-        name: name || null,
+        name: name.value,
         email,
         passwordHash
       }
