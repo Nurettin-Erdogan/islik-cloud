@@ -1,17 +1,17 @@
 # Screenshots
 
-Bu dosya Islik Cloud icin portfoy ve GitHub README ekran goruntusu planini tutar.
+Bu dosya Dükkan Defteri için portföy ve GitHub README ekran görüntüsü planını tutar.
 
-## Alinacak Ekran Goruntuleri
+## Alınacak Ekran Görüntüleri
 
-1. Login ekrani
-2. Dashboard ekrani
-3. Musteri listesi
-4. Is listesi
-5. Musteri ve is eklenmis demo ekran
-6. GitHub README canli linkler bolumu
+1. Login ekranı
+2. Dashboard ekranı
+3. Müşteri listesi
+4. İş listesi
+5. Müşteri ve iş eklenmiş demo ekran
+6. GitHub README canlı linkler bölümü
 
-## Onerilen Dosya Yolu
+## Önerilen Dosya Yolu
 
 ```text
 docs/images/01-login.png
@@ -22,10 +22,10 @@ docs/images/05-demo-data.png
 docs/images/06-readme-links.png
 ```
 
-## README Icin Onerilen Kullanim
+## README İçin Önerilen Kullanım
 
 ```md
-## Ekran Goruntuleri
+## Ekran Görüntüleri
 
 ![Login](docs/images/01-login.png)
 ![Dashboard](docs/images/02-dashboard.png)
@@ -34,4 +34,4 @@ docs/images/06-readme-links.png
 
 ## Not
 
-Gercek PNG dosyalari eklendikten sonra README icine gorsel linkleri konulabilir.
+Gerçek PNG dosyaları eklendikten sonra README içine görsel linkleri konulabilir.

@@ -1,8 +1,8 @@
-# İşlik Cloud - Portföy Özeti
+# Dükkan Defteri - Portföy Özeti
 
 ## Kısa Açıklama
 
-İşlik Cloud, küçük servis işletmeleri için geliştirilen full-stack müşteri ve iş takip uygulamasıdır.
+Dükkan Defteri, küçük servis işletmeleri için geliştirilen full-stack müşteri ve iş takip uygulamasıdır.
 
 Uygulama; kullanıcı kaydı, giriş, müşteri yönetimi, iş kaydı yönetimi, ödeme durumu takibi, arama/filtreleme ve kullanıcıya özel veri izolasyonu özelliklerini içerir.
 
@@ -36,7 +36,7 @@ Uygulama; kullanıcı kaydı, giriş, müşteri yönetimi, iş kaydı yönetimi,
 
 ## Portföyde Kullanılabilecek Açıklama
 
-İşlik Cloud, küçük servis işletmelerinin müşteri ve iş kayıtlarını yönetebilmesi için geliştirdiğim full-stack bir web uygulamasıdır. Projede React/Vite frontend, Express.js backend, Prisma ORM ve PostgreSQL veritabanı kullanıldı. Kullanıcılar kayıt olabilir, giriş yapabilir, kendi müşteri ve iş kayıtlarını oluşturup yönetebilir. Veriler kullanıcı bazında izole edilir; bir kullanıcı başka kullanıcının verilerine erişemez. Proje GitHub Actions ile test/build süreçlerine ve Render + Vercel üzerinden canlı deploy yapısına sahiptir.
+Dükkan Defteri, küçük servis işletmelerinin müşteri ve iş kayıtlarını yönetebilmesi için geliştirdiğim full-stack bir web uygulamasıdır. Projede React/Vite frontend, Express.js backend, Prisma ORM ve PostgreSQL veritabanı kullanıldı. Kullanıcılar kayıt olabilir, giriş yapabilir, kendi müşteri ve iş kayıtlarını oluşturup yönetebilir. Veriler kullanıcı bazında izole edilir; bir kullanıcı başka kullanıcının verilerine erişemez. Proje GitHub Actions ile test/build süreçlerine ve Render + Vercel üzerinden canlı deploy yapısına sahiptir.
 
 ## Demo Notu
 
