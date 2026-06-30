@@ -1,6 +1,6 @@
 # Kullanılabilirlik Geliştirme Yol Haritası
 
-Bu not, İşlik Cloud'u küçük servis işletmeleri için daha hızlı, anlaşılır ve hata toleranslı hale getirmek amacıyla hazırlanmıştır.
+Bu not, Dükkan Defteri'ni küçük servis işletmeleri için daha hızlı, anlaşılır ve hata toleranslı hale getirmek amacıyla hazırlanmıştır.
 
 ## Uygulanan ilk iyileştirme
 
