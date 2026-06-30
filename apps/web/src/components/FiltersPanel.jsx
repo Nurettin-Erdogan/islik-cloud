@@ -14,7 +14,7 @@ function FiltersPanel({
   return (
     <section className="panel filter-panel">
       <div className="panel-heading">
-        <h2>Arama ve Filtreler</h2>
+        <h2>Arama</h2>
         <button type="button" className="secondary-button" onClick={onResetFilters}>
           Temizle
         </button>
@@ -22,20 +22,20 @@ function FiltersPanel({
 
       <div className="filter-grid">
         <label>
-          Müşteri Ara
+          Müşteri
           <input
             value={customerSearch}
             onChange={(event) => onCustomerSearchChange(event.target.value)}
-            placeholder="Ad, telefon, adres veya not ara"
+            placeholder="İsim yaz, bağlı işler de gelsin"
           />
         </label>
 
         <label>
-          İş Ara
+          İş
           <input
             value={jobSearch}
             onChange={(event) => onJobSearchChange(event.target.value)}
-            placeholder="İş başlığı, açıklama veya müşteri ara"
+            placeholder="Başlık, açıklama veya müşteri ara"
           />
         </label>
 
