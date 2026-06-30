@@ -38,26 +38,37 @@ function formatAppointment(value) {
 function JobList({ jobs, onEdit, onMarkCompleted, onMarkPaid, onDelete }) {
   return (
     <article className="panel">
-      <h2>İşler</h2>
+      <div className="panel-heading">
+        <h2>İşler</h2>
+        <span>{jobs.length} kayıt</span>
+      </div>
 
       <div className="list">
         {jobs.length === 0 ? (
-          <p>Filtreye uygun iş kaydı yok.</p>
+          <p className="empty-state">Filtreye uygun iş kaydı yok.</p>
         ) : (
           jobs.map((job) => {
             const appointment = formatAppointment(job.appointmentAt);
 
             return (
               <div className="list-item" key={job.id}>
-                <div>
+                <div className="item-main">
                   <strong>{job.title}</strong>
                   <span>{job.customer?.name || "Müşteri yok"}</span>
-                  <small>
-                    {statusLabels[job.status] || job.status} ·{" "}
-                    {paymentStatusLabels[job.paymentStatus] || job.paymentStatus} ·{" "}
-                    {priorityLabels[job.priority] || job.priority} ·{" "}
-                    {Number(job.price || 0).toLocaleString("tr-TR")} TL
-                  </small>
+                  <div className="job-meta">
+                    <span className={`badge status-${job.status}`}>
+                      {statusLabels[job.status] || job.status}
+                    </span>
+                    <span className={`badge payment-${job.paymentStatus}`}>
+                      {paymentStatusLabels[job.paymentStatus] || job.paymentStatus}
+                    </span>
+                    <span className={`badge priority-${job.priority}`}>
+                      {priorityLabels[job.priority] || job.priority}
+                    </span>
+                    <span className="price-chip">
+                      {Number(job.price || 0).toLocaleString("tr-TR")} TL
+                    </span>
+                  </div>
                   {appointment ? <small>Randevu: {appointment}</small> : null}
                 </div>
 
