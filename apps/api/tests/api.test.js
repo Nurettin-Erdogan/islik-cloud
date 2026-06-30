@@ -213,9 +213,10 @@ test("job CRUD flow works", async () => {
       title: "Klima bakımı",
       description: "Yıllık bakım",
       price: 1200,
+      paidAmount: 400,
       status: "pending",
       priority: "urgent",
-      paymentStatus: "unpaid",
+      paymentStatus: "partial",
       appointmentAt
     })
     .expect(201);
@@ -225,6 +226,8 @@ test("job CRUD flow works", async () => {
   assert.equal(job.title, "Klima bakımı");
   assert.equal(job.customerId, customerId);
   assert.equal(job.priority, "urgent");
+  assert.equal(job.paymentStatus, "partial");
+  assert.equal(job.paidAmount, 400);
   assert.equal(job.appointmentAt, appointmentAt);
 
   const listResponse = await request(app)
@@ -255,6 +258,7 @@ test("job CRUD flow works", async () => {
   assert.equal(updateResponse.body.data.status, "completed");
   assert.equal(updateResponse.body.data.priority, "high");
   assert.equal(updateResponse.body.data.paymentStatus, "paid");
+  assert.equal(updateResponse.body.data.paidAmount, 1200);
   assert.equal(updateResponse.body.data.appointmentAt, null);
 
   await request(app)
@@ -329,8 +333,41 @@ test("job validation rejects invalid fields", async () => {
     .set("Authorization", `Bearer ${token}`)
     .send({
       customerId,
+      title: "Invalid partial payment",
+      price: 1200,
+      paymentStatus: "partial"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      customerId,
+      title: "Too much paid",
+      price: 1200,
+      paidAmount: 1200,
+      paymentStatus: "partial"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      customerId,
       title: "Invalid appointment",
       appointmentAt: "not-a-date"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      customerId,
+      title: "Past appointment",
+      appointmentAt: "2020-01-01T10:30:00.000Z"
     })
     .expect(400);
 });
