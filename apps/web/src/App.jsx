@@ -34,6 +34,7 @@ const initialJobForm = {
   title: "",
   description: "",
   price: "",
+  paidAmount: "",
   status: "pending",
   priority: "normal",
   paymentStatus: "unpaid",
@@ -55,12 +56,66 @@ function toDatetimeLocalValue(value) {
   return localDate.toISOString().slice(0, 16);
 }
 
+function getMinAppointmentValue() {
+  return toDatetimeLocalValue(new Date());
+}
+
+function getCurrentMinute() {
+  const currentMinute = new Date();
+  currentMinute.setSeconds(0, 0);
+  return currentMinute;
+}
+
+function isPastAppointment(value) {
+  if (!value) {
+    return false;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  return date < getCurrentMinute();
+}
+
 function toApiAppointment(value) {
   if (!value) {
     return null;
   }
 
   return new Date(value).toISOString();
+}
+
+function normalizeSearchValue(value) {
+  return String(value || "")
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i");
+}
+
+function includesSearch(value, query) {
+  return normalizeSearchValue(value).includes(query);
+}
+
+function startsWithSearch(value, query) {
+  return normalizeSearchValue(value).startsWith(query);
+}
+
+function getPaidAmountForJob(job) {
+  const price = Number(job.price || 0);
+
+  if (job.paymentStatus === "paid") {
+    return price;
+  }
+
+  if (job.paymentStatus === "partial") {
+    return Math.min(Number(job.paidAmount || 0), price);
+  }
+
+  return 0;
 }
 
 function App() {
@@ -78,11 +133,10 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authUser, setAuthUser] = useState(null);
   const [message, setMessage] = useState("");
+  const [minAppointmentAt, setMinAppointmentAt] = useState(getMinAppointmentValue);
 
   const totalRevenue = useMemo(() => {
-    return jobs
-      .filter((job) => job.paymentStatus === "paid")
-      .reduce((total, job) => total + Number(job.price || 0), 0);
+    return jobs.reduce((total, job) => total + getPaidAmountForJob(job), 0);
   }, [jobs]);
 
   const pendingJobs = useMemo(() => {
@@ -90,7 +144,7 @@ function App() {
   }, [jobs]);
 
   const filteredCustomers = useMemo(() => {
-    const query = customerSearch.trim().toLowerCase();
+    const query = normalizeSearchValue(customerSearch.trim());
 
     if (!query) {
       return customers;
@@ -99,18 +153,26 @@ function App() {
     return customers.filter((customer) => {
       return [customer.name, customer.phone, customer.address, customer.note]
         .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(query));
+        .some((value) => includesSearch(value, query));
     });
   }, [customers, customerSearch]);
 
   const filteredJobs = useMemo(() => {
-    const query = jobSearch.trim().toLowerCase();
+    const jobQuery = normalizeSearchValue(jobSearch.trim());
+    const customerQuery = normalizeSearchValue(customerSearch.trim());
 
     return jobs.filter((job) => {
-      const matchesSearch = query
+      const matchesJobSearch = jobQuery
         ? [job.title, job.description, job.customer?.name]
             .filter(Boolean)
-            .some((value) => value.toLowerCase().includes(query))
+            .some((value) => includesSearch(value, jobQuery))
+        : true;
+
+      const matchesCustomerSearch = customerQuery
+        ? startsWithSearch(job.customer?.name, customerQuery) ||
+          [job.customer?.phone, job.customer?.address, job.customer?.note]
+            .filter(Boolean)
+            .some((value) => includesSearch(value, customerQuery))
         : true;
 
       const matchesStatus =
@@ -121,9 +183,9 @@ function App() {
           ? true
           : job.paymentStatus === paymentStatusFilter;
 
-      return matchesSearch && matchesStatus && matchesPayment;
+      return matchesJobSearch && matchesCustomerSearch && matchesStatus && matchesPayment;
     });
-  }, [jobs, jobSearch, jobStatusFilter, paymentStatusFilter]);
+  }, [jobs, jobSearch, customerSearch, jobStatusFilter, paymentStatusFilter]);
 
   async function loadData() {
     try {
@@ -166,6 +228,14 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const intervalId = setInterval(() => {
+      setMinAppointmentAt(getMinAppointmentValue());
+    }, 60_000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
     if (authUser) {
       loadData();
     }
@@ -181,10 +251,29 @@ function App() {
 
   function updateJobForm(event) {
     const { name, value } = event.target;
-    setJobForm((current) => ({
-      ...current,
-      [name]: value
-    }));
+
+    setJobForm((current) => {
+      const nextForm = {
+        ...current,
+        [name]: value
+      };
+
+      if (name === "paymentStatus") {
+        if (value === "unpaid") {
+          nextForm.paidAmount = "0";
+        }
+
+        if (value === "paid") {
+          nextForm.paidAmount = nextForm.price || "0";
+        }
+      }
+
+      if (name === "price" && current.paymentStatus === "paid") {
+        nextForm.paidAmount = value || "0";
+      }
+
+      return nextForm;
+    });
   }
 
   function resetCustomerForm() {
@@ -222,6 +311,7 @@ function App() {
       title: job.title || "",
       description: job.description || "",
       price: String(job.price || ""),
+      paidAmount: String(job.paidAmount ?? (job.paymentStatus === "paid" ? job.price || 0 : "")),
       status: job.status || "pending",
       priority: job.priority || "normal",
       paymentStatus: job.paymentStatus || "unpaid",
@@ -252,10 +342,44 @@ function App() {
   async function handleJobSubmit(event) {
     event.preventDefault();
 
+    if (isPastAppointment(jobForm.appointmentAt)) {
+      setMessage("Hata: Geçmiş tarihli randevu eklenemez.");
+      return;
+    }
+
+    const price = Number(jobForm.price || 0);
+    let paidAmount = Number(jobForm.paidAmount || 0);
+
+    if (jobForm.paymentStatus === "unpaid") {
+      paidAmount = 0;
+    }
+
+    if (jobForm.paymentStatus === "paid") {
+      paidAmount = price;
+    }
+
+    if (jobForm.paymentStatus === "partial") {
+      if (price <= 0) {
+        setMessage("Hata: Kısmi ödeme için önce fiyat gir.");
+        return;
+      }
+
+      if (paidAmount <= 0) {
+        setMessage("Hata: Kısmi ödemede ödenen tutarı gir.");
+        return;
+      }
+
+      if (paidAmount >= price) {
+        setMessage("Hata: Kısmi ödeme toplam fiyattan küçük olmalı.");
+        return;
+      }
+    }
+
     try {
       const payload = {
         ...jobForm,
-        price: Number(jobForm.price || 0),
+        price,
+        paidAmount,
         appointmentAt: toApiAppointment(jobForm.appointmentAt)
       };
 
@@ -334,6 +458,7 @@ function App() {
   async function handleMarkJobPaid(job) {
     try {
       await updateJob(job.id, {
+        paidAmount: Number(job.price || 0),
         paymentStatus: "paid"
       });
 
@@ -405,6 +530,7 @@ function App() {
           form={jobForm}
           customers={customers}
           editingJobId={editingJobId}
+          minAppointmentAt={minAppointmentAt}
           onChange={updateJobForm}
           onSubmit={handleJobSubmit}
           onReset={resetJobForm}
