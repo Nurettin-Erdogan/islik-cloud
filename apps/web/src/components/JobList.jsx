@@ -35,6 +35,35 @@ function formatAppointment(value) {
   });
 }
 
+function formatCurrency(value) {
+  return `${Number(value || 0).toLocaleString("tr-TR")} TL`;
+}
+
+function getPaymentAmounts(job) {
+  const price = Number(job.price || 0);
+
+  if (job.paymentStatus === "paid") {
+    return {
+      paidAmount: price,
+      remainingAmount: 0
+    };
+  }
+
+  if (job.paymentStatus === "partial") {
+    const paidAmount = Math.min(Number(job.paidAmount || 0), price);
+
+    return {
+      paidAmount,
+      remainingAmount: Math.max(price - paidAmount, 0)
+    };
+  }
+
+  return {
+    paidAmount: 0,
+    remainingAmount: price
+  };
+}
+
 function JobList({ jobs, onEdit, onMarkCompleted, onMarkPaid, onDelete }) {
   return (
     <article className="panel">
@@ -49,6 +78,8 @@ function JobList({ jobs, onEdit, onMarkCompleted, onMarkPaid, onDelete }) {
         ) : (
           jobs.map((job) => {
             const appointment = formatAppointment(job.appointmentAt);
+            const { paidAmount, remainingAmount } = getPaymentAmounts(job);
+            const price = Number(job.price || 0);
 
             return (
               <div className="list-item" key={job.id}>
@@ -65,10 +96,13 @@ function JobList({ jobs, onEdit, onMarkCompleted, onMarkPaid, onDelete }) {
                     <span className={`badge priority-${job.priority}`}>
                       {priorityLabels[job.priority] || job.priority}
                     </span>
-                    <span className="price-chip">
-                      {Number(job.price || 0).toLocaleString("tr-TR")} TL
-                    </span>
+                    <span className="price-chip">Toplam: {formatCurrency(price)}</span>
                   </div>
+                  {price > 0 ? (
+                    <small className="payment-detail">
+                      Ödenen: {formatCurrency(paidAmount)} · Kalan: {formatCurrency(remainingAmount)}
+                    </small>
+                  ) : null}
                   {appointment ? <small>Randevu: {appointment}</small> : null}
                 </div>
 
