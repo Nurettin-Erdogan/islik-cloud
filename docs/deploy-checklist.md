@@ -13,9 +13,16 @@ NODE_ENV="production"
 CORS_ORIGIN="https://frontend-domain.example.com"
 ```
 
-Not: `JWT_SECRET` güçlü ve tahmin edilemez olmalıdır. Repo içine gerçek secret yazılmamalıdır.
+Opsiyonel auth rate limit ayarları:
 
-`CORS_ORIGIN`, frontend'in production adresi olmalıdır. Birden fazla frontend adresi gerekiyorsa virgülle ayrılabilir.
+```env
+AUTH_RATE_LIMIT_WINDOW_MS="900000"
+AUTH_RATE_LIMIT_MAX="30"
+```
+
+Not: `JWT_SECRET` güçlü ve tahmin edilemez olmalıdır. Repo içine gerçek secret yazılmamalıdır. Production ortamında `JWT_SECRET` boşsa API başlatılmamalıdır.
+
+`CORS_ORIGIN`, frontend'in production adresi olmalıdır. Birden fazla frontend adresi gerekiyorsa virgülle ayrılabilir. Production ortamında `CORS_ORIGIN` boş bırakılırsa tarayıcı origin'lerinden gelen istekler reddedilir.
 
 ## 2. Frontend ortam değişkenleri
 
@@ -49,6 +56,7 @@ npm start
 ```bash
 cd apps/web
 npm ci
+npm run lint
 npm run build
 ```
 
@@ -76,6 +84,7 @@ Beklenen cevap:
 - Dashboard token yokken açılmıyor mu?
 - Müşteri ekleme çalışıyor mu?
 - İş ekleme çalışıyor mu?
+- İş önceliği ve randevu zamanı kaydedilip listede görünüyor mu?
 - Düzenleme, silme, filtreleme çalışıyor mu?
 - Başka kullanıcı başka veriyi göremiyor mu?
 

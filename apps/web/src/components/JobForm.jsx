@@ -71,6 +71,26 @@ function JobForm({
       </label>
 
       <label>
+        Öncelik
+        <select name="priority" value={form.priority} onChange={onChange}>
+          <option value="low">Düşük</option>
+          <option value="normal">Normal</option>
+          <option value="high">Yüksek</option>
+          <option value="urgent">Acil</option>
+        </select>
+      </label>
+
+      <label>
+        Randevu
+        <input
+          name="appointmentAt"
+          type="datetime-local"
+          value={form.appointmentAt}
+          onChange={onChange}
+        />
+      </label>
+
+      <label>
         Ödeme
         <select
           name="paymentStatus"

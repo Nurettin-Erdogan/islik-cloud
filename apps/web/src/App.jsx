@@ -35,8 +35,33 @@ const initialJobForm = {
   description: "",
   price: "",
   status: "pending",
-  paymentStatus: "unpaid"
+  priority: "normal",
+  paymentStatus: "unpaid",
+  appointmentAt: ""
 };
+
+function toDatetimeLocalValue(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
+function toApiAppointment(value) {
+  if (!value) {
+    return null;
+  }
+
+  return new Date(value).toISOString();
+}
 
 function App() {
   const [customers, setCustomers] = useState([]);
@@ -198,7 +223,9 @@ function App() {
       description: job.description || "",
       price: String(job.price || ""),
       status: job.status || "pending",
-      paymentStatus: job.paymentStatus || "unpaid"
+      priority: job.priority || "normal",
+      paymentStatus: job.paymentStatus || "unpaid",
+      appointmentAt: toDatetimeLocalValue(job.appointmentAt)
     });
     setMessage(`${job.title} düzenleme moduna alındı.`);
   }
@@ -228,7 +255,8 @@ function App() {
     try {
       const payload = {
         ...jobForm,
-        price: Number(jobForm.price || 0)
+        price: Number(jobForm.price || 0),
+        appointmentAt: toApiAppointment(jobForm.appointmentAt)
       };
 
       if (editingJobId) {

@@ -1,7 +1,21 @@
 const jwt = require("jsonwebtoken");
 
 function getJwtSecret() {
-  return process.env.JWT_SECRET || "local-dev-secret";
+  const secret = process.env.JWT_SECRET;
+
+  if (typeof secret === "string" && secret.trim().length > 0) {
+    return secret;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET must be set in production.");
+  }
+
+  return "local-dev-secret";
+}
+
+function assertJwtSecret() {
+  getJwtSecret();
 }
 
 function signToken(user) {
@@ -48,6 +62,7 @@ function requireAuth(req, res, next) {
 }
 
 module.exports = {
+  assertJwtSecret,
   signToken,
   requireAuth
 };
