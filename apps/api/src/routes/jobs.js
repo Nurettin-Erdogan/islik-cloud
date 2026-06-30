@@ -67,7 +67,7 @@ function normalizeEnum(value, allowedValues, fieldName, fallback) {
   };
 }
 
-function normalizePrice(value, fallback) {
+function normalizeNonNegativeNumber(value, fieldName, fallback) {
   if (value === undefined) {
     return {
       value: fallback
@@ -78,7 +78,7 @@ function normalizePrice(value, fallback) {
 
   if (!Number.isFinite(numberValue) || numberValue < 0) {
     return {
-      error: "price must be a positive number."
+      error: fieldName + " must be a non-negative number."
     };
   }
 
@@ -108,8 +108,59 @@ function normalizeDate(value) {
     };
   }
 
+  const currentMinute = new Date();
+  currentMinute.setSeconds(0, 0);
+
+  if (date < currentMinute) {
+    return {
+      error: "appointmentAt cannot be in the past."
+    };
+  }
+
   return {
     value: date
+  };
+}
+
+function normalizePaymentSnapshot({ price, paymentStatus, paidAmount }) {
+  const safePrice = Number(price || 0);
+  const safePaidAmount = Number(paidAmount || 0);
+
+  if (paymentStatus === "unpaid") {
+    return {
+      paymentStatus,
+      paidAmount: 0
+    };
+  }
+
+  if (paymentStatus === "paid") {
+    return {
+      paymentStatus,
+      paidAmount: safePrice
+    };
+  }
+
+  if (safePrice <= 0) {
+    return {
+      error: "partial payments require a price greater than 0."
+    };
+  }
+
+  if (safePaidAmount <= 0) {
+    return {
+      error: "paidAmount must be greater than 0 for partial payments."
+    };
+  }
+
+  if (safePaidAmount >= safePrice) {
+    return {
+      error: "paidAmount must be less than price for partial payments."
+    };
+  }
+
+  return {
+    paymentStatus,
+    paidAmount: safePaidAmount
   };
 }
 
@@ -175,7 +226,8 @@ router.post("/", async (req, res, next) => {
     const description = normalizeOptionalString(req.body.description, "description");
     const status = normalizeEnum(req.body.status, allowedStatuses, "status", "pending");
     const priority = normalizeEnum(req.body.priority, allowedPriorities, "priority", "normal");
-    const price = normalizePrice(req.body.price, 0);
+    const price = normalizeNonNegativeNumber(req.body.price, "price", 0);
+    const paidAmount = normalizeNonNegativeNumber(req.body.paidAmount, "paidAmount", 0);
     const paymentStatus = normalizeEnum(
       req.body.paymentStatus,
       allowedPaymentStatuses,
@@ -183,6 +235,11 @@ router.post("/", async (req, res, next) => {
       "unpaid"
     );
     const appointmentAt = normalizeDate(req.body.appointmentAt);
+    const payment = normalizePaymentSnapshot({
+      price: price.value,
+      paymentStatus: paymentStatus.value,
+      paidAmount: paidAmount.value
+    });
 
     const error =
       customerId.error ||
@@ -191,8 +248,10 @@ router.post("/", async (req, res, next) => {
       status.error ||
       priority.error ||
       price.error ||
+      paidAmount.error ||
       paymentStatus.error ||
-      appointmentAt.error;
+      appointmentAt.error ||
+      payment.error;
 
     if (error) {
       return validationError(res, error);
@@ -212,7 +271,8 @@ router.post("/", async (req, res, next) => {
         status: status.value,
         priority: priority.value,
         price: price.value,
-        paymentStatus: paymentStatus.value,
+        paidAmount: payment.paidAmount,
+        paymentStatus: payment.paymentStatus,
         appointmentAt: appointmentAt.value ?? null
       },
       include: {
@@ -319,7 +379,7 @@ router.put("/:id", async (req, res, next) => {
     }
 
     if (hasOwn(req.body, "price")) {
-      const price = normalizePrice(req.body.price);
+      const price = normalizeNonNegativeNumber(req.body.price, "price");
 
       if (price.error) {
         return validationError(res, price.error);
@@ -342,6 +402,16 @@ router.put("/:id", async (req, res, next) => {
       data.paymentStatus = paymentStatus.value;
     }
 
+    if (hasOwn(req.body, "paidAmount")) {
+      const paidAmount = normalizeNonNegativeNumber(req.body.paidAmount, "paidAmount");
+
+      if (paidAmount.error) {
+        return validationError(res, paidAmount.error);
+      }
+
+      data.paidAmount = paidAmount.value;
+    }
+
     if (hasOwn(req.body, "appointmentAt")) {
       const appointmentAt = normalizeDate(req.body.appointmentAt);
 
@@ -350,6 +420,29 @@ router.put("/:id", async (req, res, next) => {
       }
 
       data.appointmentAt = appointmentAt.value;
+    }
+
+    if (
+      hasOwn(req.body, "price") ||
+      hasOwn(req.body, "paidAmount") ||
+      hasOwn(req.body, "paymentStatus")
+    ) {
+      const payment = normalizePaymentSnapshot({
+        price: hasOwn(data, "price") ? data.price : existingJob.price,
+        paymentStatus: hasOwn(data, "paymentStatus")
+          ? data.paymentStatus
+          : existingJob.paymentStatus,
+        paidAmount: hasOwn(data, "paidAmount")
+          ? data.paidAmount
+          : existingJob.paidAmount ?? 0
+      });
+
+      if (payment.error) {
+        return validationError(res, payment.error);
+      }
+
+      data.paymentStatus = payment.paymentStatus;
+      data.paidAmount = payment.paidAmount;
     }
 
     const job = await prisma.job.update({
