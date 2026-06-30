@@ -143,6 +143,7 @@ test("job CRUD flow works", async () => {
     .expect(201);
 
   const customerId = customerResponse.body.data.id;
+  const appointmentAt = "2030-01-01T10:30:00.000Z";
 
   const createJobResponse = await request(app)
     .post("/api/jobs")
@@ -155,7 +156,7 @@ test("job CRUD flow works", async () => {
       status: "pending",
       priority: "urgent",
       paymentStatus: "unpaid",
-      appointmentAt: "2030-01-01T10:30:00.000Z"
+      appointmentAt
     })
     .expect(201);
 
@@ -164,6 +165,7 @@ test("job CRUD flow works", async () => {
   assert.equal(job.title, "Klima bakımı");
   assert.equal(job.customerId, customerId);
   assert.equal(job.priority, "urgent");
+  assert.equal(job.appointmentAt, appointmentAt);
 
   const listResponse = await request(app)
     .get("/api/jobs")
@@ -184,12 +186,16 @@ test("job CRUD flow works", async () => {
     .set("Authorization", `Bearer ${token}`)
     .send({
       status: "completed",
-      paymentStatus: "paid"
+      priority: "high",
+      paymentStatus: "paid",
+      appointmentAt: null
     })
     .expect(200);
 
   assert.equal(updateResponse.body.data.status, "completed");
+  assert.equal(updateResponse.body.data.priority, "high");
   assert.equal(updateResponse.body.data.paymentStatus, "paid");
+  assert.equal(updateResponse.body.data.appointmentAt, null);
 
   await request(app)
     .delete(`/api/jobs/${job.id}`)
