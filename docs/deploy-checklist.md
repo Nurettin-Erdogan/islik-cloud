@@ -1,6 +1,6 @@
 # Deploy Checklist
 
-Bu doküman İşlik Cloud'u deploy'a hazırlamak için takip edilecek kısa kontrol listesidir.
+Bu doküman Dükkan Defteri'ni deploy'a hazırlamak için takip edilecek kısa kontrol listesidir.
 
 ## 1. Backend ortam değişkenleri
 
