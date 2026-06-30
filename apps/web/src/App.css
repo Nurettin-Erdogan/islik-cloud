@@ -446,6 +446,18 @@ h2 {
   font-size: 1.8rem;
 }
 
+.auth-hint {
+  margin: -4px 0 0;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #1e40af;
+  background: #eff6ff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .auth-form {
   display: grid;
   gap: 13px;
