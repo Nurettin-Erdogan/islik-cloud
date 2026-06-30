@@ -1,11 +1,25 @@
+function formatCurrency(value) {
+  return `${Number(value || 0).toLocaleString("tr-TR")} TL`;
+}
+
 function JobForm({
   form,
   customers,
   editingJobId,
+  minAppointmentAt,
   onChange,
   onSubmit,
   onReset
 }) {
+  const price = Number(form.price || 0);
+  const paidAmount =
+    form.paymentStatus === "paid"
+      ? price
+      : form.paymentStatus === "partial"
+        ? Number(form.paidAmount || 0)
+        : 0;
+  const remainingAmount = Math.max(price - paidAmount, 0);
+
   return (
     <form className="panel" onSubmit={onSubmit}>
       <h2>{editingJobId ? "İş Kaydı Düzenle" : "İş Kaydı Ekle"}</h2>
@@ -54,6 +68,7 @@ function JobForm({
           name="price"
           type="number"
           min="0"
+          step="0.01"
           value={form.price}
           onChange={onChange}
           placeholder="1200"
@@ -85,6 +100,7 @@ function JobForm({
         <input
           name="appointmentAt"
           type="datetime-local"
+          min={minAppointmentAt}
           value={form.appointmentAt}
           onChange={onChange}
         />
@@ -102,6 +118,29 @@ function JobForm({
           <option value="paid">Ödendi</option>
         </select>
       </label>
+
+      {form.paymentStatus === "partial" ? (
+        <label>
+          Ödenen Tutar
+          <input
+            name="paidAmount"
+            type="number"
+            min="0"
+            max={form.price || undefined}
+            step="0.01"
+            value={form.paidAmount}
+            onChange={onChange}
+            placeholder="500"
+            required
+          />
+        </label>
+      ) : null}
+
+      {price > 0 ? (
+        <small className="payment-summary">
+          Ödenen: {formatCurrency(paidAmount)} · Kalan: {formatCurrency(remainingAmount)}
+        </small>
+      ) : null}
 
       <div className="form-actions">
         <button type="submit" disabled={customers.length === 0}>
