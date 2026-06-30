@@ -71,7 +71,7 @@ function AuthScreen({ onAuthSuccess }) {
   return (
     <main className="auth-shell">
       <section className="auth-card">
-        <p className="eyebrow">İşlik Cloud</p>
+        <p className="eyebrow">Dükkan Defteri</p>
         <h1>{mode === "login" ? "Giriş Yap" : "Hesap Oluştur"}</h1>
         <p className="hero-text">
           Müşteri ve iş takip paneline devam etmek için hesabınla giriş yap.
