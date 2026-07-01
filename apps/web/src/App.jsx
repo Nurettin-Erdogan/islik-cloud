@@ -150,11 +150,7 @@ function App() {
       return customers;
     }
 
-    return customers.filter((customer) => {
-      return [customer.name, customer.phone, customer.address, customer.note]
-        .filter(Boolean)
-        .some((value) => includesSearch(value, query));
-    });
+    return customers.filter((customer) => startsWithSearch(customer.name, query));
   }, [customers, customerSearch]);
 
   const filteredJobs = useMemo(() => {
@@ -169,10 +165,7 @@ function App() {
         : true;
 
       const matchesCustomerSearch = customerQuery
-        ? startsWithSearch(job.customer?.name, customerQuery) ||
-          [job.customer?.phone, job.customer?.address, job.customer?.note]
-            .filter(Boolean)
-            .some((value) => includesSearch(value, customerQuery))
+        ? startsWithSearch(job.customer?.name, customerQuery)
         : true;
 
       const matchesStatus =
@@ -547,8 +540,8 @@ function App() {
         <JobList
           jobs={filteredJobs}
           onEdit={startEditJob}
-          onMarkCompleted={handleMarkJobCompleted}
-          onMarkPaid={handleMarkJobPaid}
+          onMarkCompleted={handleMarkCompleted}
+          onMarkPaid={handleMarkPaid}
           onDelete={handleDeleteJob}
         />
       </section>
