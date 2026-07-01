@@ -39,29 +39,19 @@ function formatCurrency(value) {
   return `${Number(value || 0).toLocaleString("tr-TR")} TL`;
 }
 
-function getPaymentAmounts(job) {
+function getRemainingAmount(job) {
   const price = Number(job.price || 0);
 
   if (job.paymentStatus === "paid") {
-    return {
-      paidAmount: price,
-      remainingAmount: 0
-    };
+    return 0;
   }
 
   if (job.paymentStatus === "partial") {
     const paidAmount = Math.min(Number(job.paidAmount || 0), price);
-
-    return {
-      paidAmount,
-      remainingAmount: Math.max(price - paidAmount, 0)
-    };
+    return Math.max(price - paidAmount, 0);
   }
 
-  return {
-    paidAmount: 0,
-    remainingAmount: price
-  };
+  return price;
 }
 
 function JobList({ jobs, onEdit, onMarkCompleted, onMarkPaid, onDelete }) {
@@ -78,8 +68,10 @@ function JobList({ jobs, onEdit, onMarkCompleted, onMarkPaid, onDelete }) {
         ) : (
           jobs.map((job) => {
             const appointment = formatAppointment(job.appointmentAt);
-            const { paidAmount, remainingAmount } = getPaymentAmounts(job);
+            const remainingAmount = getRemainingAmount(job);
             const price = Number(job.price || 0);
+            const hasPartialPayment =
+              job.paymentStatus === "partial" && price > 0 && Number(job.paidAmount || 0) > 0;
 
             return (
               <div className="list-item" key={job.id}>
@@ -98,9 +90,9 @@ function JobList({ jobs, onEdit, onMarkCompleted, onMarkPaid, onDelete }) {
                     </span>
                     <span className="price-chip">Toplam: {formatCurrency(price)}</span>
                   </div>
-                  {price > 0 ? (
+                  {hasPartialPayment ? (
                     <small className="payment-detail">
-                      Ödenen: {formatCurrency(paidAmount)} · Kalan: {formatCurrency(remainingAmount)}
+                      Kalan: {formatCurrency(remainingAmount)}
                     </small>
                   ) : null}
                   {appointment ? <small>Randevu: {appointment}</small> : null}
