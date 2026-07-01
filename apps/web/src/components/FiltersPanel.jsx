@@ -26,7 +26,7 @@ function FiltersPanel({
           <input
             value={customerSearch}
             onChange={(event) => onCustomerSearchChange(event.target.value)}
-            placeholder="İsim yaz, bağlı işler de gelsin"
+            placeholder="Ad, telefon, adres veya not ara"
           />
         </label>
 
