@@ -277,26 +277,22 @@ function App() {
     {
       id: "overview",
       label: "Özet",
-      meta: "Genel durum",
-      count: pendingJobs
+      meta: "Genel durum"
     },
     {
       id: "customers",
       label: "Müşteriler",
-      meta: "Kayıt ve düzenleme",
-      count: customers.length
+      meta: "Kayıt ve düzenleme"
     },
     {
       id: "jobs",
       label: "İş Ekle",
-      meta: "Randevu ve ödeme",
-      count: jobs.length
+      meta: "Randevu ve ödeme"
     },
     {
       id: "search",
       label: "İş Ara",
-      meta: "Filtreli takip",
-      count: filteredJobs.length
+      meta: "Filtreli takip"
     }
   ];
 
@@ -902,7 +898,6 @@ function App() {
             >
               <span className="sidebar-link-main">{item.label}</span>
               <small>{item.meta}</small>
-              <span className="sidebar-count">{item.count}</span>
             </button>
           ))}
         </nav>
