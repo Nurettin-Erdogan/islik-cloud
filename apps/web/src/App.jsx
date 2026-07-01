@@ -908,7 +908,6 @@ function App() {
         </nav>
 
         <div className="sidebar-account">
-          <span className="session-user">{authUser.email}</span>
           <button type="button" className="secondary-button" onClick={handleLogout}>
             Çıkış Yap
           </button>
