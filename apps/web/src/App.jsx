@@ -43,6 +43,17 @@ const initialJobForm = {
   appointmentAt: ""
 };
 
+const activeViewIds = new Set(["overview", "customers", "jobs", "search"]);
+
+function getInitialActiveView() {
+  if (typeof window === "undefined") {
+    return "overview";
+  }
+
+  const hashView = window.location.hash.replace("#", "");
+  return activeViewIds.has(hashView) ? hashView : "overview";
+}
+
 function toDatetimeLocalValue(value) {
   if (!value) {
     return "";
@@ -188,6 +199,7 @@ function App() {
   const [jobSearch, setJobSearch] = useState("");
   const [jobStatusFilter, setJobStatusFilter] = useState("all");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
+  const [activeView, setActiveView] = useState(getInitialActiveView);
   const [loading, setLoading] = useState(false);
   const [authUser, setAuthUser] = useState(() => (getToken() ? getStoredUser() : null));
   const [authLoading, setAuthLoading] = useState(() => Boolean(getToken() && !getStoredUser()));
@@ -201,6 +213,9 @@ function App() {
   const pendingJobs = useMemo(() => {
     return jobs.filter((job) => job.status !== "completed").length;
   }, [jobs]);
+
+  const recentCustomers = useMemo(() => customers.slice(0, 4), [customers]);
+  const recentJobs = useMemo(() => jobs.slice(0, 4), [jobs]);
 
   const filteredCustomers = useMemo(() => {
     const query = customerSearch.trim();
@@ -237,6 +252,54 @@ function App() {
     });
   }, [jobs, jobSearch, customerSearch, jobStatusFilter, paymentStatusFilter]);
 
+  const pageMeta = {
+    overview: {
+      eyebrow: "Dükkan Defteri",
+      title: "Özet"
+    },
+    customers: {
+      eyebrow: "Müşteri",
+      title: editingCustomerId ? "Müşteri Düzenle" : "Müşteriler"
+    },
+    jobs: {
+      eyebrow: "İş",
+      title: editingJobId ? "İş Düzenle" : "İş Ekle"
+    },
+    search: {
+      eyebrow: "Arama",
+      title: "İş Ara"
+    }
+  };
+
+  const currentPage = pageMeta[activeView] || pageMeta.overview;
+
+  const navigationItems = [
+    {
+      id: "overview",
+      label: "Özet",
+      meta: "Genel durum",
+      count: pendingJobs
+    },
+    {
+      id: "customers",
+      label: "Müşteriler",
+      meta: "Kayıt ve düzenleme",
+      count: customers.length
+    },
+    {
+      id: "jobs",
+      label: "İş Ekle",
+      meta: "Randevu ve ödeme",
+      count: jobs.length
+    },
+    {
+      id: "search",
+      label: "İş Ara",
+      meta: "Filtreli takip",
+      count: filteredJobs.length
+    }
+  ];
+
   async function loadData() {
     try {
       setLoading(true);
@@ -255,6 +318,32 @@ function App() {
       setLoading(false);
     }
   }
+
+  function openView(viewId) {
+    if (!activeViewIds.has(viewId)) {
+      return;
+    }
+
+    setActiveView(viewId);
+
+    if (typeof window !== "undefined" && window.location.hash !== `#${viewId}`) {
+      window.history.pushState(null, "", `#${viewId}`);
+    }
+  }
+
+  useEffect(() => {
+    function syncViewFromRoute() {
+      setActiveView(getInitialActiveView());
+    }
+
+    window.addEventListener("hashchange", syncViewFromRoute);
+    window.addEventListener("popstate", syncViewFromRoute);
+
+    return () => {
+      window.removeEventListener("hashchange", syncViewFromRoute);
+      window.removeEventListener("popstate", syncViewFromRoute);
+    };
+  }, []);
 
   useEffect(() => {
     async function loadSession() {
@@ -410,7 +499,18 @@ function App() {
     setPaymentStatusFilter("all");
   }
 
+  function openCustomerEntry() {
+    resetCustomerForm();
+    openView("customers");
+  }
+
+  function openJobEntry() {
+    resetJobForm();
+    openView("jobs");
+  }
+
   function startEditCustomer(customer) {
+    openView("customers");
     setEditingCustomerId(customer.id);
     setCustomerForm({
       name: customer.name || "",
@@ -422,6 +522,7 @@ function App() {
   }
 
   function startEditJob(job) {
+    openView("jobs");
     setEditingJobId(job.id);
     setJobForm({
       customerId: job.customerId || "",
@@ -600,9 +701,176 @@ function App() {
     setMessage("");
   }
 
+  function renderOverviewPage() {
+    return (
+      <section className="page-stack">
+        <StatsGrid
+          customerCount={customers.length}
+          jobCount={jobs.length}
+          pendingJobs={pendingJobs}
+          totalRevenue={totalRevenue}
+        />
+
+        <section className="action-strip" aria-label="Hızlı işlemler">
+          <button type="button" onClick={openCustomerEntry}>
+            Müşteri Ekle
+          </button>
+          <button type="button" onClick={openJobEntry}>
+            İş Ekle
+          </button>
+          <button type="button" onClick={() => openView("search")}>
+            İş Ara
+          </button>
+        </section>
+
+        <section className="workspace-grid">
+          <JobList
+            jobs={recentJobs}
+            onEdit={startEditJob}
+            onMarkCompleted={handleMarkJobCompleted}
+            onMarkPaid={handleMarkJobPaid}
+            onDelete={handleDeleteJob}
+          />
+
+          <CustomerList
+            customers={recentCustomers}
+            onEdit={startEditCustomer}
+            onDelete={handleDeleteCustomer}
+          />
+        </section>
+      </section>
+    );
+  }
+
+  function renderCustomersPage() {
+    return (
+      <section className="page-stack">
+        <section className="panel compact-filter">
+          <div className="panel-heading">
+            <h2>Müşteri Ara</h2>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setCustomerSearch("")}
+            >
+              Temizle
+            </button>
+          </div>
+
+          <label>
+            Arama
+            <input
+              value={customerSearch}
+              onChange={(event) => setCustomerSearch(event.target.value)}
+              placeholder="Ad, telefon, adres veya not ara"
+            />
+          </label>
+
+          <div className="filter-summary">
+            <span>{filteredCustomers.length} müşteri</span>
+          </div>
+        </section>
+
+        <section className="workspace-grid">
+          <CustomerForm
+            form={customerForm}
+            editingCustomerId={editingCustomerId}
+            onChange={updateCustomerForm}
+            onSubmit={handleCustomerSubmit}
+            onReset={resetCustomerForm}
+          />
+
+          <CustomerList
+            customers={filteredCustomers}
+            onEdit={startEditCustomer}
+            onDelete={handleDeleteCustomer}
+          />
+        </section>
+      </section>
+    );
+  }
+
+  function renderJobsPage() {
+    return (
+      <section className="page-stack">
+        <section className="workspace-grid">
+          <JobForm
+            form={jobForm}
+            customers={customers}
+            editingJobId={editingJobId}
+            minAppointmentAt={minAppointmentAt}
+            onChange={updateJobForm}
+            onSubmit={handleJobSubmit}
+            onReset={resetJobForm}
+          />
+
+          <JobList
+            jobs={jobs}
+            onEdit={startEditJob}
+            onMarkCompleted={handleMarkJobCompleted}
+            onMarkPaid={handleMarkJobPaid}
+            onDelete={handleDeleteJob}
+          />
+        </section>
+      </section>
+    );
+  }
+
+  function renderSearchPage() {
+    return (
+      <section className="page-stack">
+        <FiltersPanel
+          customerSearch={customerSearch}
+          jobSearch={jobSearch}
+          jobStatusFilter={jobStatusFilter}
+          paymentStatusFilter={paymentStatusFilter}
+          filteredCustomerCount={filteredCustomers.length}
+          filteredJobCount={filteredJobs.length}
+          onCustomerSearchChange={setCustomerSearch}
+          onJobSearchChange={setJobSearch}
+          onJobStatusFilterChange={setJobStatusFilter}
+          onPaymentStatusFilterChange={setPaymentStatusFilter}
+          onResetFilters={resetFilters}
+        />
+
+        <section className="workspace-grid">
+          <JobList
+            jobs={filteredJobs}
+            onEdit={startEditJob}
+            onMarkCompleted={handleMarkJobCompleted}
+            onMarkPaid={handleMarkJobPaid}
+            onDelete={handleDeleteJob}
+          />
+
+          <CustomerList
+            customers={filteredCustomers}
+            onEdit={startEditCustomer}
+            onDelete={handleDeleteCustomer}
+          />
+        </section>
+      </section>
+    );
+  }
+
+  function renderActiveView() {
+    if (activeView === "customers") {
+      return renderCustomersPage();
+    }
+
+    if (activeView === "jobs") {
+      return renderJobsPage();
+    }
+
+    if (activeView === "search") {
+      return renderSearchPage();
+    }
+
+    return renderOverviewPage();
+  }
+
   if (authLoading) {
     return (
-      <main className="app-shell">
+      <main className="loading-shell">
         <p className="message">Oturum kontrol ediliyor...</p>
       </main>
     );
@@ -614,66 +882,46 @@ function App() {
 
   return (
     <main className="app-shell">
-      <DashboardHeader userEmail={authUser.email} onLogout={handleLogout} />
+      <aside className="app-sidebar">
+        <div className="sidebar-brand">
+          <span className="brand-mark">D</span>
+          <div>
+            <strong>Dükkan Defteri</strong>
+            <small>İş takibi</small>
+          </div>
+        </div>
 
-      <StatsGrid
-        customerCount={customers.length}
-        jobCount={jobs.length}
-        pendingJobs={pendingJobs}
-        totalRevenue={totalRevenue}
-      />
+        <nav className="sidebar-nav" aria-label="Ana menü">
+          {navigationItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`sidebar-link ${activeView === item.id ? "is-active" : ""}`}
+              aria-current={activeView === item.id ? "page" : undefined}
+              onClick={() => openView(item.id)}
+            >
+              <span className="sidebar-link-main">{item.label}</span>
+              <small>{item.meta}</small>
+              <span className="sidebar-count">{item.count}</span>
+            </button>
+          ))}
+        </nav>
 
-      <FiltersPanel
-        customerSearch={customerSearch}
-        jobSearch={jobSearch}
-        jobStatusFilter={jobStatusFilter}
-        paymentStatusFilter={paymentStatusFilter}
-        filteredCustomerCount={filteredCustomers.length}
-        filteredJobCount={filteredJobs.length}
-        onCustomerSearchChange={setCustomerSearch}
-        onJobSearchChange={setJobSearch}
-        onJobStatusFilterChange={setJobStatusFilter}
-        onPaymentStatusFilterChange={setPaymentStatusFilter}
-        onResetFilters={resetFilters}
-      />
+        <div className="sidebar-account">
+          <span className="session-user">{authUser.email}</span>
+          <button type="button" className="secondary-button" onClick={handleLogout}>
+            Çıkış Yap
+          </button>
+        </div>
+      </aside>
 
-      {message ? <p className="message">{message}</p> : null}
-      {loading ? <p className="message">Veriler yükleniyor...</p> : null}
+      <section className="app-content">
+        <DashboardHeader eyebrow={currentPage.eyebrow} title={currentPage.title} />
 
-      <section className="workspace-grid">
-        <CustomerForm
-          form={customerForm}
-          editingCustomerId={editingCustomerId}
-          onChange={updateCustomerForm}
-          onSubmit={handleCustomerSubmit}
-          onReset={resetCustomerForm}
-        />
+        {message ? <p className="message">{message}</p> : null}
+        {loading ? <p className="message">Veriler yükleniyor...</p> : null}
 
-        <JobForm
-          form={jobForm}
-          customers={customers}
-          editingJobId={editingJobId}
-          minAppointmentAt={minAppointmentAt}
-          onChange={updateJobForm}
-          onSubmit={handleJobSubmit}
-          onReset={resetJobForm}
-        />
-      </section>
-
-      <section className="workspace-grid">
-        <CustomerList
-          customers={filteredCustomers}
-          onEdit={startEditCustomer}
-          onDelete={handleDeleteCustomer}
-        />
-
-        <JobList
-          jobs={filteredJobs}
-          onEdit={startEditJob}
-          onMarkCompleted={handleMarkJobCompleted}
-          onMarkPaid={handleMarkJobPaid}
-          onDelete={handleDeleteJob}
-        />
+        {renderActiveView()}
       </section>
     </main>
   );
