@@ -540,8 +540,8 @@ function App() {
         <JobList
           jobs={filteredJobs}
           onEdit={startEditJob}
-          onMarkCompleted={handleMarkCompleted}
-          onMarkPaid={handleMarkPaid}
+          onMarkCompleted={handleMarkJobCompleted}
+          onMarkPaid={handleMarkJobPaid}
           onDelete={handleDeleteJob}
         />
       </section>
