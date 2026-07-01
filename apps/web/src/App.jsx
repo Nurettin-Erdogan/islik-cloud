@@ -104,6 +104,24 @@ function startsWithSearch(value, query) {
   return normalizeSearchValue(value).startsWith(query);
 }
 
+function matchesCustomerSearch(customer, query) {
+  if (!query) {
+    return true;
+  }
+
+  if (!customer) {
+    return false;
+  }
+
+  if (query.length === 1) {
+    return startsWithSearch(customer.name, query);
+  }
+
+  return [customer.name, customer.phone, customer.address, customer.note]
+    .filter(Boolean)
+    .some((value) => includesSearch(value, query));
+}
+
 function getPaidAmountForJob(job) {
   const price = Number(job.price || 0);
 
@@ -145,12 +163,7 @@ function App() {
 
   const filteredCustomers = useMemo(() => {
     const query = normalizeSearchValue(customerSearch.trim());
-
-    if (!query) {
-      return customers;
-    }
-
-    return customers.filter((customer) => startsWithSearch(customer.name, query));
+    return customers.filter((customer) => matchesCustomerSearch(customer, query));
   }, [customers, customerSearch]);
 
   const filteredJobs = useMemo(() => {
@@ -164,9 +177,7 @@ function App() {
             .some((value) => includesSearch(value, jobQuery))
         : true;
 
-      const matchesCustomerSearch = customerQuery
-        ? startsWithSearch(job.customer?.name, customerQuery)
-        : true;
+      const matchesCustomer = matchesCustomerSearch(job.customer, customerQuery);
 
       const matchesStatus =
         jobStatusFilter === "all" ? true : job.status === jobStatusFilter;
@@ -176,7 +187,7 @@ function App() {
           ? true
           : job.paymentStatus === paymentStatusFilter;
 
-      return matchesJobSearch && matchesCustomerSearch && matchesStatus && matchesPayment;
+      return matchesJobSearch && matchesCustomer && matchesStatus && matchesPayment;
     });
   }, [jobs, jobSearch, customerSearch, jobStatusFilter, paymentStatusFilter]);
 
