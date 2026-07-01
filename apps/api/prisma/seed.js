@@ -59,6 +59,7 @@ async function main() {
         status: "completed",
         priority: "normal",
         price: 1250,
+        paidAmount: 1250,
         paymentStatus: "paid"
       },
       {
@@ -68,6 +69,7 @@ async function main() {
         status: "in_progress",
         priority: "high",
         price: 1800,
+        paidAmount: 700,
         paymentStatus: "partial"
       },
       {
@@ -77,6 +79,7 @@ async function main() {
         status: "pending",
         priority: "urgent",
         price: 3200,
+        paidAmount: 0,
         paymentStatus: "unpaid"
       },
       {
@@ -86,6 +89,7 @@ async function main() {
         status: "pending",
         priority: "normal",
         price: 2400,
+        paidAmount: 0,
         paymentStatus: "unpaid"
       }
     ]

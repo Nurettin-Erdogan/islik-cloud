@@ -41,6 +41,7 @@ model Job {
   status        String    @default("pending")
   priority      String    @default("normal")
   price         Float     @default(0)
+  paidAmount    Float     @default(0)
   paymentStatus String    @default("unpaid")
   appointmentAt DateTime?
   createdAt     DateTime  @default(now())

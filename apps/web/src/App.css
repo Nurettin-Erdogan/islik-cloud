@@ -428,6 +428,20 @@ h2 {
   background: #f1f5f9;
 }
 
+.payment-summary,
+.payment-detail {
+  color: #475569;
+  font-weight: 800;
+}
+
+.payment-summary {
+  margin-top: -6px;
+}
+
+.payment-detail {
+  display: block;
+}
+
 .auth-shell {
   display: grid;
   min-height: 100vh;
