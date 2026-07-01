@@ -16,8 +16,10 @@ import {
   getCustomers,
   getJobs,
   getMe,
+  getStoredUser,
   getToken,
   logout,
+  setStoredUser,
   updateCustomer,
   updateJob
 } from "./services/api";
@@ -96,15 +98,53 @@ function normalizeSearchValue(value) {
     .replace(/ı/g, "i");
 }
 
+function getSearchTokens(value) {
+  return normalizeSearchValue(value).split(/\s+/).filter(Boolean);
+}
+
+function getDigitsOnly(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
 function includesSearch(value, query) {
   return normalizeSearchValue(value).includes(query);
+}
+
+function fieldMatchesSearch(value, query) {
+  if (includesSearch(value, query)) {
+    return true;
+  }
+
+  const queryDigits = getDigitsOnly(query);
+  return Boolean(queryDigits && getDigitsOnly(value).includes(queryDigits));
 }
 
 function startsWithSearch(value, query) {
   return normalizeSearchValue(value).startsWith(query);
 }
 
-function matchesCustomerSearch(customer, query) {
+function digitsIncludeSearch(value, query) {
+  const queryDigits = getDigitsOnly(query);
+  return Boolean(queryDigits && getDigitsOnly(value).includes(queryDigits));
+}
+
+function matchesTextSearch(fields, searchText) {
+  const tokens = getSearchTokens(searchText);
+
+  if (tokens.length === 0) {
+    return true;
+  }
+
+  const searchableFields = fields.filter(Boolean);
+
+  return tokens.every((token) =>
+    searchableFields.some((value) => fieldMatchesSearch(value, token))
+  );
+}
+
+function matchesCustomerSearch(customer, searchText) {
+  const query = normalizeSearchValue(searchText.trim());
+
   if (!query) {
     return true;
   }
@@ -114,12 +154,13 @@ function matchesCustomerSearch(customer, query) {
   }
 
   if (query.length === 1) {
-    return startsWithSearch(customer.name, query);
+    return startsWithSearch(customer.name, query) || digitsIncludeSearch(customer.phone, searchText);
   }
 
-  return [customer.name, customer.phone, customer.address, customer.note]
-    .filter(Boolean)
-    .some((value) => includesSearch(value, query));
+  return matchesTextSearch(
+    [customer.name, customer.phone, customer.address, customer.note],
+    searchText
+  );
 }
 
 function getPaidAmountForJob(job) {
@@ -148,8 +189,8 @@ function App() {
   const [jobStatusFilter, setJobStatusFilter] = useState("all");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
   const [loading, setLoading] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authUser, setAuthUser] = useState(null);
+  const [authUser, setAuthUser] = useState(() => (getToken() ? getStoredUser() : null));
+  const [authLoading, setAuthLoading] = useState(() => Boolean(getToken() && !getStoredUser()));
   const [message, setMessage] = useState("");
   const [minAppointmentAt, setMinAppointmentAt] = useState(getMinAppointmentValue);
 
@@ -162,20 +203,25 @@ function App() {
   }, [jobs]);
 
   const filteredCustomers = useMemo(() => {
-    const query = normalizeSearchValue(customerSearch.trim());
+    const query = customerSearch.trim();
     return customers.filter((customer) => matchesCustomerSearch(customer, query));
   }, [customers, customerSearch]);
 
   const filteredJobs = useMemo(() => {
-    const jobQuery = normalizeSearchValue(jobSearch.trim());
-    const customerQuery = normalizeSearchValue(customerSearch.trim());
+    const customerQuery = customerSearch.trim();
 
     return jobs.filter((job) => {
-      const matchesJobSearch = jobQuery
-        ? [job.title, job.description, job.customer?.name]
-            .filter(Boolean)
-            .some((value) => includesSearch(value, jobQuery))
-        : true;
+      const matchesJobSearch = matchesTextSearch(
+        [
+          job.title,
+          job.description,
+          job.customer?.name,
+          job.customer?.phone,
+          job.customer?.address,
+          job.customer?.note
+        ],
+        jobSearch
+      );
 
       const matchesCustomer = matchesCustomerSearch(job.customer, customerQuery);
 
@@ -217,12 +263,29 @@ function App() {
         return;
       }
 
+      const cachedUser = getStoredUser();
+
+      if (cachedUser) {
+        setAuthUser(cachedUser);
+        setAuthLoading(false);
+      }
+
       try {
         const response = await getMe();
-        setAuthUser(response.data.user);
+        const user = response.data.user;
+        setStoredUser(user);
+        setAuthUser((current) => {
+          if (current?.id === user.id && current?.email === user.email) {
+            return current;
+          }
+
+          return user;
+        });
       } catch {
         logout();
         setAuthUser(null);
+        setCustomers([]);
+        setJobs([]);
       } finally {
         setAuthLoading(false);
       }
@@ -243,7 +306,57 @@ function App() {
     if (authUser) {
       loadData();
     }
-  }, [authUser]);
+  }, [authUser?.id]);
+
+  function upsertCustomerInState(customer) {
+    setCustomers((current) => {
+      const customerExists = current.some((item) => item.id === customer.id);
+
+      if (customerExists) {
+        return current.map((item) => (item.id === customer.id ? customer : item));
+      }
+
+      return [customer, ...current];
+    });
+
+    setJobs((current) =>
+      current.map((job) =>
+        job.customerId === customer.id ? { ...job, customer } : job
+      )
+    );
+  }
+
+  function removeCustomerFromState(customerId) {
+    setCustomers((current) => current.filter((customer) => customer.id !== customerId));
+    setJobs((current) => current.filter((job) => job.customerId !== customerId));
+  }
+
+  function getJobWithCustomer(job) {
+    if (job.customer) {
+      return job;
+    }
+
+    const customer = customers.find((item) => item.id === job.customerId);
+    return customer ? { ...job, customer } : job;
+  }
+
+  function upsertJobInState(job) {
+    const nextJob = getJobWithCustomer(job);
+
+    setJobs((current) => {
+      const jobExists = current.some((item) => item.id === nextJob.id);
+
+      if (jobExists) {
+        return current.map((item) => (item.id === nextJob.id ? nextJob : item));
+      }
+
+      return [nextJob, ...current];
+    });
+  }
+
+  function removeJobFromState(jobId) {
+    setJobs((current) => current.filter((job) => job.id !== jobId));
+  }
 
   function updateCustomerForm(event) {
     const { name, value } = event.target;
@@ -329,15 +442,16 @@ function App() {
 
     try {
       if (editingCustomerId) {
-        await updateCustomer(editingCustomerId, customerForm);
+        const response = await updateCustomer(editingCustomerId, customerForm);
+        upsertCustomerInState(response.data);
         setMessage("Müşteri güncellendi.");
       } else {
-        await createCustomer(customerForm);
+        const response = await createCustomer(customerForm);
+        upsertCustomerInState(response.data);
         setMessage("Müşteri eklendi.");
       }
 
       resetCustomerForm();
-      await loadData();
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
     }
@@ -388,15 +502,16 @@ function App() {
       };
 
       if (editingJobId) {
-        await updateJob(editingJobId, payload);
+        const response = await updateJob(editingJobId, payload);
+        upsertJobInState(response.data);
         setMessage("İş kaydı güncellendi.");
       } else {
-        await createJob(payload);
+        const response = await createJob(payload);
+        upsertJobInState(response.data);
         setMessage("İş kaydı eklendi.");
       }
 
       resetJobForm();
-      await loadData();
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
     }
@@ -418,8 +533,12 @@ function App() {
         resetCustomerForm();
       }
 
+      if (jobForm.customerId === customer.id) {
+        resetJobForm();
+      }
+
+      removeCustomerFromState(customer.id);
       setMessage("Müşteri silindi.");
-      await loadData();
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
     }
@@ -439,8 +558,8 @@ function App() {
         resetJobForm();
       }
 
+      removeJobFromState(job.id);
       setMessage("İş kaydı silindi.");
-      await loadData();
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
     }
@@ -448,12 +567,12 @@ function App() {
 
   async function handleMarkJobCompleted(job) {
     try {
-      await updateJob(job.id, {
+      const response = await updateJob(job.id, {
         status: "completed"
       });
 
+      upsertJobInState(response.data);
       setMessage("İş tamamlandı olarak işaretlendi.");
-      await loadData();
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
     }
@@ -461,13 +580,13 @@ function App() {
 
   async function handleMarkJobPaid(job) {
     try {
-      await updateJob(job.id, {
+      const response = await updateJob(job.id, {
         paidAmount: Number(job.price || 0),
         paymentStatus: "paid"
       });
 
+      upsertJobInState(response.data);
       setMessage("Ödeme ödendi olarak işaretlendi.");
-      await loadData();
     } catch (error) {
       setMessage(`Hata: ${error.message}`);
     }

@@ -1,5 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const TOKEN_KEY = "islik_cloud_token";
+const USER_KEY = "islik_cloud_user";
 const WARMUP_TIMEOUT_MS = 8_000;
 
 export function getToken() {
@@ -10,8 +11,33 @@ export function setToken(token) {
   localStorage.setItem(TOKEN_KEY, token);
 }
 
+export function getStoredUser() {
+  const rawUser = localStorage.getItem(USER_KEY);
+
+  if (!rawUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawUser);
+  } catch {
+    localStorage.removeItem(USER_KEY);
+    return null;
+  }
+}
+
+export function setStoredUser(user) {
+  if (!user) {
+    localStorage.removeItem(USER_KEY);
+    return;
+  }
+
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
 export function logout() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 async function request(path, options = {}) {
@@ -71,6 +97,7 @@ export async function register(payload) {
   });
 
   setToken(response.data.token);
+  setStoredUser(response.data.user);
   return response;
 }
 
@@ -81,6 +108,7 @@ export async function login(payload) {
   });
 
   setToken(response.data.token);
+  setStoredUser(response.data.user);
   return response;
 }
 

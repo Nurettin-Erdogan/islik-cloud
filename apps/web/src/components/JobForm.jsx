@@ -19,6 +19,8 @@ function JobForm({
         ? Number(form.paidAmount || 0)
         : 0;
   const remainingAmount = Math.max(price - paidAmount, 0);
+  const shouldShowRemainingAmount =
+    form.paymentStatus === "partial" && price > 0 && paidAmount > 0;
 
   return (
     <form className="panel" onSubmit={onSubmit}>
@@ -136,9 +138,9 @@ function JobForm({
         </label>
       ) : null}
 
-      {price > 0 ? (
+      {shouldShowRemainingAmount ? (
         <small className="payment-summary">
-          Ödenen: {formatCurrency(paidAmount)} · Kalan: {formatCurrency(remainingAmount)}
+          Kalan: {formatCurrency(remainingAmount)}
         </small>
       ) : null}
 
