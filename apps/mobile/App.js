@@ -1,13 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Linking,
-  Modal,
   NativeModules,
   Platform,
   Pressable,
@@ -22,6 +19,7 @@ import {
   View
 } from "react-native";
 import { api, DEFAULT_API_URL } from "./src/api/client";
+import { PhotoPicker, PhotoPreviewModal, PhotoStrip, normalizePhotoList } from "./src/components/Photos";
 import {
   paymentStatuses,
   paymentStatusLabels,
@@ -47,8 +45,6 @@ import {
 const TOKEN_KEY = "servis_defteri_mobile_token";
 const USER_KEY = "servis_defteri_mobile_user";
 const API_URL_KEY = "servis_defteri_mobile_api_url";
-const MAX_MOBILE_PHOTOS = 3;
-const MAX_MOBILE_PHOTO_DATA_URL_LENGTH = 950000;
 
 const initialRequestForm = {
   name: "",
@@ -322,13 +318,6 @@ function openAddress(address) {
   );
 }
 
-function normalizePhotoList(photos) {
-  return Array.isArray(photos) ? photos.filter((photo) => photo?.dataUrl || photo?.uri) : [];
-}
-
-function getPhotoUri(photo) {
-  return photo?.dataUrl || photo?.uri || "";
-}
 
 async function shareRequestCode(item) {
   const requestCode = item?.requestCode;
@@ -349,106 +338,6 @@ async function shareRequestCode(item) {
   }
 }
 
-function createMobilePhoto(asset) {
-  const mimeType = asset.mimeType || "image/jpeg";
-
-  if (!asset.base64) {
-    return { error: "Fotoğraf okunamadı." };
-  }
-
-  const dataUrl = "data:" + mimeType + ";base64," + asset.base64;
-
-  if (dataUrl.length > MAX_MOBILE_PHOTO_DATA_URL_LENGTH) {
-    return { error: "Fotoğraf çok büyük. Daha düşük boyutlu fotoğraf seç." };
-  }
-
-  return {
-    value: {
-      id: "photo-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
-      uri: asset.uri,
-      dataUrl,
-      name: asset.fileName || "Fotoğraf",
-      type: mimeType
-    }
-  };
-}
-
-async function pickPhotos(currentPhotos, onChange) {
-  const current = normalizePhotoList(currentPhotos);
-  const remaining = MAX_MOBILE_PHOTOS - current.length;
-
-  if (remaining <= 0) {
-    Alert.alert("Sınır dolu", "En fazla 3 fotoğraf ekleyebilirsin.");
-    return;
-  }
-
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-  if (!permission.granted) {
-    Alert.alert("İzin gerekli", "Fotoğraf seçmek için galeri izni vermelisin.");
-    return;
-  }
-
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsMultipleSelection: true,
-    selectionLimit: remaining,
-    base64: true,
-    quality: 0.35
-  });
-
-  if (result.canceled) {
-    return;
-  }
-
-  const nextPhotos = [...current];
-
-  for (const asset of result.assets || []) {
-    const photo = createMobilePhoto(asset);
-    if (photo.error) {
-      Alert.alert("Fotoğraf eklenemedi", photo.error);
-      continue;
-    }
-    nextPhotos.push(photo.value);
-  }
-
-  onChange(nextPhotos.slice(0, MAX_MOBILE_PHOTOS));
-}
-
-async function takePhoto(currentPhotos, onChange) {
-  const current = normalizePhotoList(currentPhotos);
-
-  if (current.length >= MAX_MOBILE_PHOTOS) {
-    Alert.alert("Sınır dolu", "En fazla 3 fotoğraf ekleyebilirsin.");
-    return;
-  }
-
-  const permission = await ImagePicker.requestCameraPermissionsAsync();
-
-  if (!permission.granted) {
-    Alert.alert("İzin gerekli", "Fotoğraf çekmek için kamera izni vermelisin.");
-    return;
-  }
-
-  const result = await ImagePicker.launchCameraAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    base64: true,
-    quality: 0.35
-  });
-
-  if (result.canceled || !result.assets?.[0]) {
-    return;
-  }
-
-  const photo = createMobilePhoto(result.assets[0]);
-
-  if (photo.error) {
-    Alert.alert("Fotoğraf eklenemedi", photo.error);
-    return;
-  }
-
-  onChange([...current, photo.value].slice(0, MAX_MOBILE_PHOTOS));
-}
 
 function App() {
   const [apiUrl, setApiUrl] = useState(getDefaultMobileApiUrl);
@@ -1282,81 +1171,6 @@ function ServerCard({ apiUrlDraft, setApiUrlDraft, onSave, onTest, detectedApiUr
   );
 }
 
-function PhotoPicker({ photos, onChange }) {
-  const items = normalizePhotoList(photos);
-
-  return (
-    <View style={styles.photoPicker}>
-      <View style={styles.rowBetween}>
-        <Text style={styles.label}>Fotoğraflar</Text>
-        <Text style={styles.muted}>{items.length}/3</Text>
-      </View>
-      {items.length > 0 ? (
-        <View style={styles.photoGrid}>
-          {items.map((photo) => (
-            <View key={photo.id || getPhotoUri(photo)} style={styles.photoTile}>
-              <Image source={{ uri: getPhotoUri(photo) }} style={styles.photoImage} />
-              <Pressable
-                style={styles.photoRemove}
-                onPress={() => onChange(items.filter((item) => item !== photo))}
-              >
-                <Text style={styles.photoRemoveText}>Sil</Text>
-              </Pressable>
-            </View>
-          ))}
-        </View>
-      ) : (
-        <Text style={styles.muted}>Arızayı gösteren fotoğraf ekleyebilirsin.</Text>
-      )}
-      <View style={styles.actionRow}>
-        <SmallButton title="Galeriden Seç" onPress={() => pickPhotos(items, onChange)} />
-        <SmallButton title="Kamera" onPress={() => takePhoto(items, onChange)} />
-      </View>
-    </View>
-  );
-}
-
-function PhotoStrip({ photos, onOpenPhoto }) {
-  const items = normalizePhotoList(photos);
-
-  if (items.length === 0) {
-    return null;
-  }
-
-  return (
-    <View style={styles.photoStrip}>
-      {items.map((photo) => (
-        <Pressable
-          key={photo.id || getPhotoUri(photo)}
-          style={styles.photoStripButton}
-          onPress={() => onOpenPhoto?.(photo)}
-          disabled={!onOpenPhoto}
-        >
-          <Image source={{ uri: getPhotoUri(photo) }} style={styles.photoStripImage} />
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
-function PhotoPreviewModal({ photo, onClose }) {
-  const uri = getPhotoUri(photo);
-
-  return (
-    <Modal visible={Boolean(uri)} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.photoModal}>
-        <Pressable style={styles.photoModalBackdrop} onPress={onClose} />
-        <View style={styles.photoModalContent}>
-          {uri ? <Image source={{ uri }} style={styles.photoModalImage} resizeMode="contain" /> : null}
-          <Text style={styles.photoModalTitle}>{photo?.name || "Fotoğraf"}</Text>
-          <Pressable style={styles.photoModalClose} onPress={onClose}>
-            <Text style={styles.photoModalCloseText}>Kapat</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
-}
 
 function CustomerPortal({
   requestForm,
