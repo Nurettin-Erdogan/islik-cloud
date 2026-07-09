@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import CustomerPortal from "./CustomerPortal";
+import InstallAppButton from "./InstallAppButton";
 import { login, register, warmUpApi } from "../services/api";
 
 const initialForm = {
@@ -10,7 +12,45 @@ const initialForm = {
 const WARMUP_HINT_DELAY_MS = 1_600;
 const SLOW_SUBMIT_DELAY_MS = 2_400;
 
+function getAuthErrorMessage(error, mode) {
+  const message = error?.message || "Beklenmeyen bir hata oluştu.";
+
+  if (message === "Email is already registered.") {
+    return mode === "register"
+      ? "Bu e-posta zaten kayıtlı. Giriş moduna aldım, şifrenle giriş yapabilirsin."
+      : "Bu e-posta zaten kayıtlı.";
+  }
+
+  if (message === "Invalid email or password.") {
+    return "E-posta veya şifre hatalı.";
+  }
+
+  if (message === "Valid email is required.") {
+    return "Geçerli bir e-posta gir.";
+  }
+
+  if (message === "Password must be at least 6 characters.") {
+    return "Şifre en az 6 karakter olmalı.";
+  }
+
+  if (message === "Name cannot contain numbers.") {
+    return "Ad soyad alanında rakam kullanma.";
+  }
+
+  return message;
+}
+
+function getInitialEntryMode() {
+  if (typeof window === "undefined") {
+    return "customer";
+  }
+
+  const entry = new URLSearchParams(window.location.search).get("entry");
+  return entry === "technician" ? "technician" : "customer";
+}
+
 function AuthScreen({ onAuthSuccess }) {
+  const [entryMode, setEntryMode] = useState(getInitialEntryMode);
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
@@ -89,7 +129,11 @@ function AuthScreen({ onAuthSuccess }) {
       setMessage("");
       onAuthSuccess(response.data.user);
     } catch (error) {
-      setMessage(`Hata: ${error.message}`);
+      if (mode === "register" && error.message === "Email is already registered.") {
+        setMode("login");
+      }
+
+      setMessage("Hata: " + getAuthErrorMessage(error, mode));
     } finally {
       clearTimeout(slowSubmitTimerId);
       setSubmitting(false);
@@ -111,75 +155,101 @@ function AuthScreen({ onAuthSuccess }) {
 
   return (
     <main className="auth-shell">
-      <section className="auth-card">
-        <p className="eyebrow">Dükkan Defteri</p>
-        <h1>{mode === "login" ? "Giriş Yap" : "Hesap Oluştur"}</h1>
-        <p className="hero-text">
-          Müşteri ve iş takip paneline devam etmek için hesabınla giriş yap.
-        </p>
+      <section className="auth-entry">
+        <div className="auth-entry-switch" aria-label="Giriş türü">
+          <button
+            type="button"
+            className={`auth-entry-button ${entryMode === "customer" ? "is-active" : ""}`}
+            onClick={() => setEntryMode("customer")}
+          >
+            Müşteri
+          </button>
+          <button
+            type="button"
+            className={`auth-entry-button ${entryMode === "technician" ? "is-active" : ""}`}
+            onClick={() => setEntryMode("technician")}
+          >
+            Usta
+          </button>
+        </div>
 
-        {message ? <p className="message">{message}</p> : null}
-        {helperMessage ? <p className="auth-hint">{helperMessage}</p> : null}
+        {entryMode === "customer" ? <CustomerPortal /> : null}
 
-        <form className="auth-form" onSubmit={handleSubmit} onKeyDown={submitOnEnter}>
-          {mode === "register" ? (
+        {entryMode === "technician" ? (
+        <section className="auth-card technician-card">
+          <p className="eyebrow">Usta Paneli</p>
+          <h1>{mode === "login" ? "Servis Girişi" : "Usta Hesabı Oluştur"}</h1>
+          <p className="hero-text">
+            Gelen müşteri taleplerini, randevuları ve ödemeleri yönetmek için giriş yap.
+          </p>
+
+          {message ? <p className="message">{message}</p> : null}
+          {helperMessage ? <p className="auth-hint">{helperMessage}</p> : null}
+
+          <form className="auth-form" onSubmit={handleSubmit} onKeyDown={submitOnEnter}>
+            {mode === "register" ? (
+              <label>
+                Ad Soyad
+                <input
+                  name="name"
+                  value={form.name}
+                  onChange={updateForm}
+                  placeholder="Ahmet Yılmaz"
+                  autoComplete="name"
+                  pattern="[^0-9]*"
+                />
+              </label>
+            ) : null}
+
             <label>
-              Ad Soyad
+              E-posta
               <input
-                name="name"
-                value={form.name}
+                name="email"
+                type="email"
+                value={form.email}
                 onChange={updateForm}
-                placeholder="Ahmet Yılmaz"
-                autoComplete="name"
-                pattern="[^0-9]*"
+                placeholder="ornek@mail.com"
+                autoComplete="email"
+                autoFocus
+                required
               />
             </label>
-          ) : null}
 
-          <label>
-            E-posta
-            <input
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={updateForm}
-              placeholder="ornek@mail.com"
-              autoComplete="email"
-              autoFocus
-              required
-            />
-          </label>
+            <label>
+              Şifre
+              <input
+                name="password"
+                type="password"
+                minLength="6"
+                value={form.password}
+                onChange={updateForm}
+                placeholder="En az 6 karakter"
+                autoComplete={mode === "register" ? "new-password" : "current-password"}
+                required
+              />
+            </label>
 
-          <label>
-            Şifre
-            <input
-              name="password"
-              type="password"
-              minLength="6"
-              value={form.password}
-              onChange={updateForm}
-              placeholder="En az 6 karakter"
-              autoComplete={mode === "register" ? "new-password" : "current-password"}
-              required
-            />
-          </label>
+            <button type="submit" disabled={submitting}>
+              {submitting
+                ? slowSubmit
+                  ? "Sunucu hazırlanıyor..."
+                  : "Kontrol ediliyor..."
+                : mode === "login"
+                  ? "Usta Girişi Yap"
+                  : "Kayıt Ol"}
+            </button>
+          </form>
 
-          <button type="submit" disabled={submitting}>
-            {submitting
-              ? slowSubmit
-                ? "Sunucu hazırlanıyor..."
-                : "Kontrol ediliyor..."
-              : mode === "login"
-                ? "Giriş Yap"
-                : "Kayıt Ol"}
-          </button>
-        </form>
-
-        <button type="button" className="secondary-button auth-switch" onClick={switchMode}>
-          {mode === "login"
-            ? "Hesabın yok mu? Kayıt ol"
-            : "Hesabın var mı? Giriş yap"}
-        </button>
+          <div className="auth-actions">
+            <button type="button" className="secondary-button auth-switch" onClick={switchMode}>
+              {mode === "login"
+                ? "Usta hesabın yok mu? Kayıt ol"
+                : "Hesabın var mı? Giriş yap"}
+            </button>
+            <InstallAppButton className="auth-install" />
+          </div>
+        </section>
+        ) : null}
       </section>
     </main>
   );

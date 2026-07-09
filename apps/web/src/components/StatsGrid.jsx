@@ -8,21 +8,21 @@ function StatsGrid({ customerCount, jobCount, pendingJobs, totalRevenue }) {
       </article>
 
       <article className="stat-card stat-card-green">
-        <span>İş Kaydı</span>
+        <span>Talep</span>
         <strong>{jobCount}</strong>
-        <small>Toplam servis</small>
+        <small>Toplam arıza kaydı</small>
       </article>
 
       <article className="stat-card stat-card-amber">
-        <span>Bekleyen İş</span>
+        <span>Açık Talep</span>
         <strong>{pendingJobs}</strong>
-        <small>Açık takip</small>
+        <small>Usta takibinde</small>
       </article>
 
       <article className="stat-card stat-card-slate">
-        <span>Ödenmiş Gelir</span>
+        <span>Tahsilat</span>
         <strong>{totalRevenue.toLocaleString("tr-TR")} TL</strong>
-        <small>Tamamlanan tahsilat</small>
+        <small>Ödenmiş servis geliri</small>
       </article>
     </section>
   );

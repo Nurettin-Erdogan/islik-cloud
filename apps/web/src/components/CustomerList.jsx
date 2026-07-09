@@ -1,4 +1,4 @@
-function CustomerList({ customers, onEdit, onDelete }) {
+function CustomerList({ customers, onEdit, onCreateJob, onDelete }) {
   return (
     <article className="panel">
       <div className="panel-heading">
@@ -19,6 +19,16 @@ function CustomerList({ customers, onEdit, onDelete }) {
               </div>
 
               <div className="list-actions">
+                {onCreateJob ? (
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => onCreateJob(customer)}
+                  >
+                    Talep Aç
+                  </button>
+                ) : null}
+
                 <button
                   type="button"
                   className="ghost-button"

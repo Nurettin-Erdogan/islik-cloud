@@ -4,3 +4,9 @@ node_modules
 dist
 coverage
 .DS_Store
+.expo
+.expo-shared
+dist-mobile-check
+apps/mobile/dist-mobile-check
+apps/mobile/dist-export-check
+apps/mobile/metro-out

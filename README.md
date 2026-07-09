@@ -1,6 +1,6 @@
-# Dükkan Defteri
+# Servis Defteri
 
-Dükkan Defteri; küçük servis işletmeleri için geliştirilen müşteri, iş, ödeme ve operasyon takip panelidir.
+Servis Defteri; küçük servis işletmeleri için geliştirilen müşteri, iş, ödeme ve operasyon takip panelidir.
 
 Bu proje, küçük işletmelerin günlük işlerini daha düzenli takip edebilmesi için geliştirilen full-stack web uygulamasıdır. Amaç; teknik servis, tamirci, saha hizmeti veren küçük işletmeler ve bireysel çalışanlar için müşteri ve iş süreçlerini tek panelden yönetilebilir hale getirmektir.
 
@@ -11,6 +11,10 @@ Bu proje, küçük işletmelerin günlük işlerini daha düzenli takip edebilme
 - Health check: https://islik-cloud-api.onrender.com/health
 
 Not: Backend Render Free üzerinde çalıştığı için uzun süre istek gelmezse uyku moduna geçebilir. İlk istek 30-60 saniye gecikebilir.
+
+## Ürün Yönü
+
+Servis Defteri artık web sitesi gibi değil, mobil öncelikli PWA servis uygulaması olarak geliştirilir. Kısa vadede telefona kurulabilir web uygulaması güçlendirilecek; ürün oturduktan sonra aynı kod tabanı Capacitor ile Android/iOS paketine alınabilir.
 
 ## Durum
 
@@ -66,6 +70,30 @@ Proje aktif geliştirme aşamasındadır ve şu anda deploy edilmiş çalışan 
 - Bekleyen iş sayısı
 - Ödenmiş gelir toplamı
 - Dashboard istatistikleri
+
+## Mobil Uygulama
+
+Projede `apps/mobile` altında Expo ile yazılmış gerçek mobil frontend bulunur. Mobil uygulama mevcut Express API'yi kullanır; backend'i yeniden yazmaz.
+
+Mobil uygulamada:
+
+- Müşteri talep açma ve takip ekranı
+- Usta giriş/kayıt ekranı
+- Bugün, açık, acil, ödeme bekleyen ve tamamlanan iş panosu
+- Müşteri ekleme/düzenleme/silme
+- Müşteri kartından doğrudan talep açma
+- Talep ekleme/düzenleme/tamamlama/ödendi işaretleme
+- Mobil uygulama içinden API sunucu adresi ayarlama
+
+Çalıştırmak için:
+
+```bash
+cd apps/mobile
+npm install
+npm start
+```
+
+Masaüstündeki `Servis Defteri Mobil Baslat.cmd` dosyası API'yi ve Expo uygulamasını birlikte başlatır. Fiziksel telefonda API adresi olarak `localhost` yerine bilgisayarın yerel IP adresi kullanılmalıdır.
 
 ## Teknolojiler
 
@@ -331,7 +359,7 @@ Bu proje adım adım PR akışıyla geliştirilmiştir:
 - Demo seed scripti eklendi
 - Render backend deploy tamamlandı
 - Vercel frontend deploy tamamlandı
-- Marka adı Dükkan Defteri olarak güncellendi
+- Marka adı Servis Defteri olarak güncellendi
 
 ## Sıradaki Aşamalar
 
@@ -344,4 +372,4 @@ Bu proje adım adım PR akışıyla geliştirilmiştir:
 
 ## Not
 
-Bu proje aktif geliştirme aşamasındadır. Amaç, Dükkan Defteri'ni production'a daha yakın full-stack bir işletme takip uygulamasına dönüştürmektir.
+Bu proje aktif geliştirme aşamasındadır. Amaç, Servis Defteri'ni production'a daha yakın full-stack bir işletme takip uygulamasına dönüştürmektir.

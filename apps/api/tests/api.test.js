@@ -2,10 +2,38 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const request = require("supertest");
 
+const testPhoto = {
+  id: "test-photo",
+  name: "front.jpg",
+  type: "image/jpeg",
+  dataUrl: "data:image/jpeg;base64," + Buffer.from("fake-photo").toString("base64")
+};
+
 const { app } = require("../src/app");
 const { prisma } = require("../src/lib/prisma");
 
+async function assertSafeCleanupDatabase() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Refusing to clean a production database.");
+  }
+
+  const databaseUrl = process.env.DATABASE_URL || "";
+  const remoteDatabaseHints = ["render.com", "amazonaws.com", "neon.tech", "supabase.co", "railway.app"];
+
+  if (remoteDatabaseHints.some((hint) => databaseUrl.includes(hint))) {
+    throw new Error("Refusing to clean a remote database during tests.");
+  }
+
+  const rows = await prisma.$queryRaw`SELECT current_database() AS name`;
+  const databaseName = String(rows?.[0]?.name || "");
+
+  if (!databaseName.includes("islik")) {
+    throw new Error("Refusing to clean an unexpected database: " + databaseName);
+  }
+}
+
 async function cleanup() {
+  await assertSafeCleanupDatabase();
   await prisma.job.deleteMany();
   await prisma.customer.deleteMany();
   await prisma.user.deleteMany();
@@ -72,6 +100,29 @@ test("auth register, login and me work", async () => {
   assert.equal(meResponse.body.data.user.email, "auth@example.com");
 });
 
+
+test("auth register rejects duplicate emails", async () => {
+  await request(app)
+    .post("/api/auth/register")
+    .send({
+      name: "Duplicate User",
+      email: "duplicate@example.com",
+      password: "secret123"
+    })
+    .expect(201);
+
+  const duplicateResponse = await request(app)
+    .post("/api/auth/register")
+    .send({
+      name: "Duplicate User",
+      email: "duplicate@example.com",
+      password: "secret123"
+    })
+    .expect(409);
+
+  assert.equal(duplicateResponse.body.error.message, "Email is already registered.");
+});
+
 test("auth register rejects names with numbers", async () => {
   await request(app)
     .post("/api/auth/register")
@@ -86,6 +137,68 @@ test("auth register rejects names with numbers", async () => {
 test("protected routes reject unauthenticated requests", async () => {
   await request(app).get("/api/customers").expect(401);
   await request(app).get("/api/jobs").expect(401);
+});
+
+test("public request flow creates, tracks and lists customer requests", async () => {
+  const token = await createAuthToken();
+
+  const createResponse = await request(app)
+    .post("/api/public/requests")
+    .send({
+      name: "Ayse Demir",
+      phone: "05551230000",
+      address: "Uskudar",
+      productCategory: "white_goods",
+      productBrand: "Vestel",
+      productModel: "NF450",
+      photos: [testPhoto],
+      description: "Buzdolabi sogutmuyor ve ekranda hata veriyor."
+    })
+    .expect(201);
+
+  const createdRequest = createResponse.body.data;
+
+  assert.match(createdRequest.requestCode, /^SD-\d{6}$/);
+  assert.equal(createdRequest.productCategory, "white_goods");
+  assert.equal(createdRequest.customer.name, "Ayse Demir");
+  assert.equal(createdRequest.photos.length, 1);
+  assert.equal(createdRequest.photos[0].name, "front.jpg");
+  assert.equal(createdRequest.statusHistory.length, 1);
+  assert.equal(createdRequest.statusHistory[0].status, "pending");
+  assert.equal(createdRequest.statusHistory[0].actor, "customer");
+
+  const trackResponse = await request(app)
+    .get("/api/public/requests/" + createdRequest.requestCode)
+    .query({
+      phone: "05551230000"
+    })
+    .expect(200);
+
+  assert.equal(trackResponse.body.data.requestCode, createdRequest.requestCode);
+  assert.equal(trackResponse.body.data.status, "pending");
+  assert.equal(trackResponse.body.data.photos.length, 1);
+  assert.equal(trackResponse.body.data.statusHistory.length, 1);
+  assert.equal(trackResponse.body.data.statusHistory[0].status, "pending");
+
+  const jobsResponse = await request(app)
+    .get("/api/jobs")
+    .set("Authorization", "Bearer " + token)
+    .expect(200);
+
+  assert.equal(jobsResponse.body.data.length, 1);
+  assert.equal(jobsResponse.body.data[0].requestCode, createdRequest.requestCode);
+  assert.equal(jobsResponse.body.data[0].source, "customer");
+  assert.equal(jobsResponse.body.data[0].productBrand, "Vestel");
+
+  await request(app)
+    .post("/api/public/requests")
+    .send({
+      name: "Ayse Demir",
+      phone: "0555ABC0000",
+      productCategory: "white_goods",
+      description: "Telefon alaninda harf olmamali."
+    })
+    .expect(400);
 });
 
 test("customer CRUD flow works", async () => {
@@ -229,6 +342,9 @@ test("job CRUD flow works", async () => {
   assert.equal(job.paymentStatus, "partial");
   assert.equal(job.paidAmount, 400);
   assert.equal(job.appointmentAt, appointmentAt);
+  assert.equal(job.statusEvents.length, 1);
+  assert.equal(job.statusEvents[0].status, "pending");
+  assert.equal(job.statusEvents[0].actor, "technician");
 
   const listResponse = await request(app)
     .get("/api/jobs")
@@ -260,6 +376,8 @@ test("job CRUD flow works", async () => {
   assert.equal(updateResponse.body.data.paymentStatus, "paid");
   assert.equal(updateResponse.body.data.paidAmount, 1200);
   assert.equal(updateResponse.body.data.appointmentAt, null);
+  assert.deepEqual(updateResponse.body.data.statusEvents.map((event) => event.status), ["pending", "completed"]);
+  assert.equal(updateResponse.body.data.statusEvents[1].actor, "technician");
 
   await request(app)
     .delete(`/api/jobs/${job.id}`)
@@ -358,6 +476,16 @@ test("job validation rejects invalid fields", async () => {
       customerId,
       title: "Invalid appointment",
       appointmentAt: "not-a-date"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      customerId,
+      title: "Photos limit",
+      photos: [testPhoto, testPhoto, testPhoto, testPhoto]
     })
     .expect(400);
 

@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Servis Defteri",
+    "slug": "servis-defteri",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "servisdefteri",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f8fafc"
+    },
+    "assetBundlePatterns": [
+      "assets/**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nurettin.servisdefteri"
+    },
+    "android": {
+      "package": "com.nurettin.servisdefteri",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f766e"
+      }
+    },
+    "extra": {
+      "apiUrl": "http://localhost:4000"
+    },
+    "jsEngine": "jsc",
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Servis talebine fotoğraf eklemek için galeri izni kullanılır.",
+          "cameraPermission": "Arıza fotoğrafı çekmek için kamera izni kullanılır."
+        }
+      ]
+    ]
+  }
+}
