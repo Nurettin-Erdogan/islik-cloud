@@ -18,6 +18,8 @@ import {
   View
 } from "react-native";
 import { api, DEFAULT_API_URL } from "./src/api/client";
+import { CustomerPortal } from "./src/components/CustomerPortal";
+import { JobStatusTrail } from "./src/components/JobStatusTrail";
 import { PhotoPicker, PhotoPreviewModal, PhotoStrip, normalizePhotoList } from "./src/components/Photos";
 import { Badge, Card, EmptyState, Input, Message, PrimaryButton, SearchInput, SegmentedControl, SmallButton } from "./src/components/ui";
 import {
@@ -367,6 +369,15 @@ function App() {
   const [jobStatusFilter, setJobStatusFilter] = useState("all");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
   const [previewPhoto, setPreviewPhoto] = useState(null);
+  const [showServerSettings, setShowServerSettings] = useState(false);
+
+  function revealServerSettingsFor(error) {
+    const errorMessage = String(error?.message || "");
+
+    if (errorMessage.startsWith("NETWORK_ERROR") || errorMessage.includes("Network request failed")) {
+      setShowServerSettings(true);
+    }
+  }
 
   useEffect(() => {
     async function boot() {
@@ -488,6 +499,7 @@ function App() {
     setApiUrl(nextApiUrl);
     setApiUrlDraft(nextApiUrl);
     setMessage("Sunucu adresi kaydedildi.");
+    setShowServerSettings(false);
   }
 
   async function testApiConnection(candidateUrl = apiUrlDraft) {
@@ -505,8 +517,10 @@ function App() {
       setApiUrl(nextApiUrl);
       setApiUrlDraft(nextApiUrl);
       setMessage("Sunucu baglantisi hazir: " + nextApiUrl);
+      setShowServerSettings(false);
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     } finally {
       setLoading(false);
     }
@@ -527,6 +541,7 @@ function App() {
       setJobs(jobResponse.data || []);
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     } finally {
       setLoading(false);
     }
@@ -555,6 +570,7 @@ function App() {
       await saveSession(response);
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     } finally {
       setLoading(false);
     }
@@ -588,6 +604,7 @@ function App() {
       setRequestForm(initialRequestForm);
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     } finally {
       setPortalBusy(false);
     }
@@ -612,6 +629,7 @@ function App() {
       setPortalResult(response.data);
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     } finally {
       setPortalBusy(false);
     }
@@ -648,6 +666,7 @@ function App() {
       setMessage(editingCustomerId ? "Müşteri güncellendi." : "Müşteri eklendi.");
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     } finally {
       setLoading(false);
     }
@@ -677,6 +696,7 @@ function App() {
             setJobs((current) => current.filter((job) => job.customerId !== customer.id));
           } catch (error) {
             setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
           }
         }
       }
@@ -750,6 +770,7 @@ function App() {
       setMessage(editingJobId ? "Talep güncellendi." : "Talep eklendi.");
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     } finally {
       setLoading(false);
     }
@@ -762,6 +783,7 @@ function App() {
       setMessage("Talep incelemeye alındı.");
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     }
   }
 
@@ -772,6 +794,7 @@ function App() {
       setMessage("Talep tamamlandı.");
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     }
   }
 
@@ -782,6 +805,7 @@ function App() {
       setMessage("Talep iptal edildi.");
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     }
   }
 
@@ -794,6 +818,7 @@ function App() {
       upsertJob(response.data);
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
     }
   }
 
@@ -809,6 +834,7 @@ function App() {
             setJobs((current) => current.filter((item) => item.id !== job.id));
           } catch (error) {
             setMessage("Hata: " + translateError(error.message));
+      revealServerSettingsFor(error);
           }
         }
       }
@@ -834,14 +860,11 @@ function App() {
             <HeaderBlock
               eyebrow="Servis Defteri"
               title={entryMode === "customer" ? "Talep ve takip" : "Usta girişi"}
-              subtitle="Müşteri talebi ve servis takibi tek mobil uygulamada."
-            />
-            <ServerCard
-              apiUrlDraft={apiUrlDraft}
-              setApiUrlDraft={setApiUrlDraft}
-              onSave={saveApiUrl}
-              onTest={testApiConnection}
-              detectedApiUrl={getSuggestedMobileApiUrl()}
+              subtitle={
+                entryMode === "customer"
+                  ? "Servis talebini oluştur, takip kodunla son durumunu gör."
+                  : "Müşteri taleplerini, randevuları ve ödemeleri yönet."
+              }
             />
             <SegmentedControl
               items={[
@@ -852,6 +875,29 @@ function App() {
               onChange={setEntryMode}
             />
             {message ? <Message text={message} /> : null}
+            <Pressable
+              style={styles.connectionToggle}
+              onPress={() => setShowServerSettings((current) => !current)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: showServerSettings }}
+            >
+              <View style={styles.connectionCopy}>
+                <Text style={styles.connectionTitle}>Bağlantı ayarları</Text>
+                <Text style={styles.connectionValue}>
+                  {isLocalApiUrl(apiUrl) ? "Telefon bağlantısı ayarlanmalı" : "Sunucu adresi ayarlı"}
+                </Text>
+              </View>
+              <Text style={styles.connectionToggleText}>{showServerSettings ? "Kapat" : "Aç"}</Text>
+            </Pressable>
+            {showServerSettings ? (
+              <ServerCard
+                apiUrlDraft={apiUrlDraft}
+                setApiUrlDraft={setApiUrlDraft}
+                onSave={saveApiUrl}
+                onTest={testApiConnection}
+                detectedApiUrl={getSuggestedMobileApiUrl()}
+              />
+            ) : null}
             {entryMode === "customer" ? (
               <CustomerPortal
                 requestForm={requestForm}
@@ -863,6 +909,7 @@ function App() {
                 onCreate={createPortalRequest}
                 onTrack={trackPortalRequest}
                 onOpenPhoto={setPreviewPhoto}
+                onShare={shareRequestCode}
               />
             ) : (
               <AuthPanel
@@ -1172,140 +1219,6 @@ function ServerCard({ apiUrlDraft, setApiUrlDraft, onSave, onTest, detectedApiUr
 }
 
 
-function CustomerPortal({
-  requestForm,
-  setRequestForm,
-  trackingForm,
-  setTrackingForm,
-  result,
-  busy,
-  onCreate,
-  onTrack,
-  onOpenPhoto
-}) {
-  return (
-    <View style={styles.stack}>
-      <Card>
-        <Text style={styles.cardTitle}>Arıza Talebi Aç</Text>
-        <Input
-          label="Ad Soyad"
-          value={requestForm.name}
-          onChangeText={(value) => setRequestForm({ ...requestForm, name: stripDigits(value) })}
-          placeholder="Ahmet Yılmaz"
-        />
-        <Input
-          label="Telefon"
-          value={requestForm.phone}
-          onChangeText={(value) => setRequestForm({ ...requestForm, phone: digitsOnly(value) })}
-          placeholder="05551234567"
-          keyboardType="number-pad"
-        />
-        <Input
-          label="Adres"
-          value={requestForm.address}
-          onChangeText={(value) => setRequestForm({ ...requestForm, address: value })}
-          placeholder="Mahalle, sokak, ilçe"
-        />
-        <Text style={styles.label}>Ürün</Text>
-        <SegmentedControl
-          items={productCategories}
-          value={requestForm.productCategory}
-          onChange={(value) => setRequestForm({ ...requestForm, productCategory: value })}
-        />
-        <View style={styles.twoColumn}>
-          <Input
-            label="Marka"
-            value={requestForm.productBrand}
-            onChangeText={(value) => setRequestForm({ ...requestForm, productBrand: value })}
-            placeholder="Arçelik"
-          />
-          <Input
-            label="Model"
-            value={requestForm.productModel}
-            onChangeText={(value) => setRequestForm({ ...requestForm, productModel: value })}
-            placeholder="Opsiyonel"
-          />
-        </View>
-        <Input
-          label="Arıza Açıklaması"
-          value={requestForm.description}
-          onChangeText={(value) => setRequestForm({ ...requestForm, description: value })}
-          placeholder="Sorunu kısaca anlat"
-          multiline
-        />
-        <PhotoPicker
-          photos={requestForm.photos}
-          onChange={(photos) => setRequestForm({ ...requestForm, photos })}
-        />
-        <PrimaryButton title={busy ? "Gönderiliyor..." : "Talep Oluştur"} onPress={onCreate} disabled={busy} />
-      </Card>
-      <Card>
-        <Text style={styles.cardTitle}>Talep Takibi</Text>
-        <Input
-          label="Takip Kodu"
-          value={trackingForm.requestCode}
-          onChangeText={(value) => setTrackingForm({ ...trackingForm, requestCode: value.toUpperCase() })}
-          placeholder="SD-123456"
-          autoCapitalize="characters"
-        />
-        <Input
-          label="Telefon"
-          value={trackingForm.phone}
-          onChangeText={(value) => setTrackingForm({ ...trackingForm, phone: digitsOnly(value) })}
-          placeholder="05551234567"
-          keyboardType="number-pad"
-        />
-        <Pressable style={styles.secondaryAction} onPress={onTrack} disabled={busy}>
-          <Text style={styles.secondaryActionText}>{busy ? "Kontrol ediliyor..." : "Durumu Göster"}</Text>
-        </Pressable>
-      </Card>
-      {result ? <PublicRequestResult result={result} busy={busy} onRefresh={onTrack} onOpenPhoto={onOpenPhoto} /> : null}
-    </View>
-  );
-}
-
-function PublicRequestResult({ result, busy, onRefresh, onOpenPhoto }) {
-  const productLine = [result.productCategoryLabel, result.productBrand, result.productModel].filter(Boolean).join(" - ");
-  const history = Array.isArray(result.statusHistory) ? result.statusHistory : [];
-  const appointment = formatDateTime(result.appointmentAt);
-
-  return (
-    <Card accent={result.status === "cancelled" ? "#dc2626" : "#0f766e"}>
-      <View style={styles.rowBetween}>
-        <View style={styles.flex}>
-          <Text style={styles.muted}>Takip Kodu</Text>
-          <Text style={styles.resultCode}>{result.requestCode}</Text>
-        </View>
-        <Badge text={statusLabels[result.status] || result.status} danger={result.status === "cancelled"} />
-      </View>
-      <JobStatusTrail status={result.status} />
-      <Text style={styles.bodyText}>{result.title || "Servis talebi"}</Text>
-      {productLine ? <Text style={styles.muted}>{productLine}</Text> : null}
-      <PhotoStrip photos={result.photos} onOpenPhoto={onOpenPhoto} />
-      <Text style={styles.muted}>
-        {appointment ? "Randevu: " + appointment : "Randevu bilgisi usta tarafından eklenecek."}
-      </Text>
-      <View style={styles.historyBox}>
-        <Text style={styles.historyTitle}>Talep geçmişi</Text>
-        {history.length > 0 ? (
-          history.map((event) => (
-            <View key={event.id || event.createdAt || event.status} style={styles.historyItem}>
-              <Text style={styles.historyStatus}>{statusLabels[event.status] || event.status}</Text>
-              <Text style={styles.historyMeta}>{formatDateTime(event.createdAt) || "Tarih yok"}</Text>
-            </View>
-          ))
-        ) : (
-          <Text style={styles.historyMeta}>İlk kayıt oluşturuldu.</Text>
-        )}
-      </View>
-      <View style={styles.actionRow}>
-        <SmallButton title="Kodu Paylaş" onPress={() => shareRequestCode(result)} />
-        <SmallButton title={busy ? "Güncelleniyor..." : "Durumu Yenile"} onPress={onRefresh} disabled={busy} />
-      </View>
-    </Card>
-  );
-}
-
 function AuthPanel({ authMode, setAuthMode, form, setForm, busy, onSubmit }) {
   return (
     <Card>
@@ -1595,35 +1508,6 @@ function JobHistory({ events }) {
   );
 }
 
-function JobStatusTrail({ status }) {
-  const steps = [
-    { value: "pending", label: "Alındı" },
-    { value: "in_progress", label: "İncelemede" },
-    { value: "completed", label: "Tamamlandı" }
-  ];
-  const activeIndex = status === "cancelled" ? -1 : Math.max(steps.findIndex((step) => step.value === status), 0);
-
-  if (status === "cancelled") {
-    return (
-      <View style={styles.statusTrail}>
-        <View style={[styles.statusStep, styles.statusStepDanger]}>
-          <Text style={[styles.statusStepText, styles.statusStepTextDanger]}>İptal edildi</Text>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.statusTrail}>
-      {steps.map((step, index) => (
-        <View key={step.value} style={[styles.statusStep, index <= activeIndex && styles.statusStepActive]}>
-          <Text style={[styles.statusStepText, index <= activeIndex && styles.statusStepTextActive]}>{step.label}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 function JobList({ jobs, emptyText, onEdit, onStart, onComplete, onCancel, onPaid, onDelete, onOpenPhoto }) {
   return (
     <View style={styles.stack}>
@@ -1763,6 +1647,38 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: 8
   },
+  connectionToggle: {
+    minHeight: 58,
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "#ffffff",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12
+  },
+  connectionCopy: {
+    flex: 1,
+    gap: 2
+  },
+  connectionTitle: {
+    color: "#334155",
+    fontSize: 13,
+    fontWeight: "900"
+  },
+  connectionValue: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "700"
+  },
+  connectionToggleText: {
+    color: "#0f766e",
+    fontSize: 13,
+    fontWeight: "900"
+  },
   appShell: {
     flex: 1,
     backgroundColor: "#f8fafc"
@@ -1809,16 +1725,7 @@ const styles = StyleSheet.create({
   },
   stack: {
     gap: 12
-  },
-  card: {
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#d9e0ea",
-    borderRadius: 8,
-    padding: 14,
-    backgroundColor: "#ffffff"
-  },
-  cardTitle: {
+  },  cardTitle: {
     color: "#111827",
     fontSize: 17,
     fontWeight: "900"
@@ -1832,14 +1739,7 @@ const styles = StyleSheet.create({
     color: "#334155",
     fontSize: 14,
     fontWeight: "700"
-  },
-  resultCode: {
-    color: "#0f766e",
-    fontSize: 25,
-    fontWeight: "900",
-    letterSpacing: 0
-  },
-  muted: {
+  },  muted: {
     color: "#64748b",
     fontSize: 13,
     fontWeight: "700"
@@ -1848,11 +1748,7 @@ const styles = StyleSheet.create({
     color: "#475569",
     fontSize: 13,
     fontWeight: "900"
-  },
-  inputGroup: {
-    gap: 6
-  },
-  input: {
+  },  input: {
     minHeight: 46,
     borderWidth: 1,
     borderColor: "#cbd5e1",
@@ -1862,25 +1758,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     fontSize: 15,
     fontWeight: "700"
-  },
-  textarea: {
-    minHeight: 92,
-    paddingTop: 12,
-    textAlignVertical: "top"
-  },
-  primaryAction: {
+  },  primaryAction: {
     minHeight: 48,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#0f766e"
-  },
-  primaryActionText: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "900"
-  },
-  secondaryAction: {
+  },  secondaryAction: {
     minHeight: 44,
     borderRadius: 8,
     alignItems: "center",
@@ -1901,21 +1785,13 @@ const styles = StyleSheet.create({
   dangerActionText: {
     color: "#991b1b",
     fontWeight: "900"
-  },
-  disabledAction: {
-    opacity: 0.5
-  },
-  message: {
+  },  message: {
     borderWidth: 1,
     borderColor: "#99f6e4",
     borderRadius: 8,
     padding: 12,
     backgroundColor: "#ecfdf5"
-  },
-  messageCompact: {
-    margin: 12
-  },
-  messageText: {
+  },  messageText: {
     color: "#115e59",
     fontWeight: "800"
   },
@@ -2043,150 +1919,61 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontSize: 11,
     fontWeight: "800"
-  },
-  statusTrail: {
-    flexDirection: "row",
-    gap: 6
-  },
-  statusStep: {
+  },  statusStep: {
     flex: 1,
     minHeight: 30,
     borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#e2e8f0"
-  },
-  statusStepActive: {
-    backgroundColor: "#0f766e"
-  },
-  statusStepDanger: {
+  },  statusStepDanger: {
     backgroundColor: "#fee2e2"
-  },
-  statusStepText: {
-    color: "#475569",
-    fontSize: 11,
-    fontWeight: "900"
-  },
-  statusStepTextActive: {
+  },  statusStepTextActive: {
     color: "#ffffff"
-  },
-  statusStepTextDanger: {
-    color: "#991b1b"
-  },
-  badge: {
+  },  badge: {
     minHeight: 26,
     borderRadius: 6,
     paddingHorizontal: 9,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ccfbf1"
-  },
-  badgeDanger: {
-    backgroundColor: "#fee2e2"
-  },
-  badgeText: {
+  },  badgeText: {
     color: "#115e59",
     fontSize: 12,
     fontWeight: "900"
-  },
-  badgeDangerText: {
-    color: "#991b1b"
-  },
-  actionRow: {
+  },  actionRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8
-  },
-  photoPicker: {
-    gap: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 8,
-    backgroundColor: "#f8fafc"
-  },
-  photoGrid: {
+  },  photoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8
-  },
-  photoTile: {
-    width: 92,
-    height: 92,
-    borderRadius: 8,
-    overflow: "hidden",
-    backgroundColor: "#e2e8f0"
-  },
-  photoImage: {
+  },  photoImage: {
     width: "100%",
     height: "100%"
-  },
-  photoRemove: {
-    position: "absolute",
-    right: 5,
-    bottom: 5,
-    minHeight: 24,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(15,23,42,0.78)"
-  },
-  photoRemoveText: {
+  },  photoRemoveText: {
     color: "#ffffff",
     fontSize: 11,
     fontWeight: "900"
-  },
-  photoStrip: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8
-  },
-  photoStripButton: {
+  },  photoStripButton: {
     borderRadius: 8,
     overflow: "hidden"
-  },
-  photoStripImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 8,
-    backgroundColor: "#e2e8f0"
-  },
-  photoModal: {
+  },  photoModal: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 18,
     backgroundColor: "rgba(15,23,42,0.88)"
-  },
-  photoModalBackdrop: {
-    ...StyleSheet.absoluteFillObject
-  },
-  photoModalContent: {
+  },  photoModalContent: {
     width: "100%",
     maxHeight: "88%",
     gap: 12,
     alignItems: "center"
-  },
-  photoModalImage: {
-    width: "100%",
-    height: 460,
-    borderRadius: 8,
-    backgroundColor: "#020617"
-  },
-  photoModalTitle: {
+  },  photoModalTitle: {
     color: "#ffffff",
     fontWeight: "900"
-  },
-  photoModalClose: {
-    minHeight: 42,
-    paddingHorizontal: 18,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ccfbf1"
-  },
-  photoModalCloseText: {
+  },  photoModalCloseText: {
     color: "#0f766e",
     fontWeight: "900"
   },
@@ -2209,32 +1996,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ccfbf1"
-  },
-  smallButtonDanger: {
-    backgroundColor: "#fee2e2"
-  },
-  smallButtonText: {
+  },  smallButtonText: {
     color: "#0f766e",
     fontSize: 13,
     fontWeight: "900"
-  },
-  smallButtonDangerText: {
-    color: "#991b1b"
-  },
-  emptyState: {
+  },  emptyState: {
     borderWidth: 1,
     borderStyle: "dashed",
     borderColor: "#cbd5e1",
     borderRadius: 8,
     padding: 16,
     backgroundColor: "#ffffff"
-  },
-  emptyText: {
-    color: "#64748b",
-    textAlign: "center",
-    fontWeight: "800"
-  },
-  bottomNav: {
+  },  bottomNav: {
     position: "absolute",
     right: 0,
     bottom: 0,
