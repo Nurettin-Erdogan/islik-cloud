@@ -15,11 +15,11 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   View
 } from "react-native";
 import { api, DEFAULT_API_URL } from "./src/api/client";
 import { PhotoPicker, PhotoPreviewModal, PhotoStrip, normalizePhotoList } from "./src/components/Photos";
+import { Badge, Card, EmptyState, Input, Message, PrimaryButton, SearchInput, SegmentedControl, SmallButton } from "./src/components/ui";
 import {
   paymentStatuses,
   paymentStatusLabels,
@@ -1718,87 +1718,6 @@ function BottomNav({ activeTab, onChange }) {
   );
 }
 
-function Card({ children, accent }) {
-  return <View style={[styles.card, accent ? { borderLeftColor: accent, borderLeftWidth: 4 } : null]}>{children}</View>;
-}
-
-function Message({ text, compact }) {
-  return (
-    <View style={[styles.message, compact && styles.messageCompact]}>
-      <Text style={styles.messageText}>{text}</Text>
-    </View>
-  );
-}
-
-function EmptyState({ text }) {
-  return (
-    <View style={styles.emptyState}>
-      <Text style={styles.emptyText}>{text}</Text>
-    </View>
-  );
-}
-
-function Input({ label, multiline, style, ...props }) {
-  return (
-    <View style={styles.inputGroup}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <TextInput
-        {...props}
-        multiline={multiline}
-        placeholderTextColor="#94a3b8"
-        style={[styles.input, multiline && styles.textarea, style]}
-      />
-    </View>
-  );
-}
-
-function SearchInput(props) {
-  return <Input {...props} label="Arama" autoCapitalize="none" />;
-}
-
-function PrimaryButton({ title, onPress, disabled }) {
-  return (
-    <Pressable style={[styles.primaryAction, disabled && styles.disabledAction]} onPress={onPress} disabled={disabled}>
-      <Text style={styles.primaryActionText}>{title}</Text>
-    </Pressable>
-  );
-}
-
-function SmallButton({ title, onPress, danger, disabled }) {
-  return (
-    <Pressable
-      style={[styles.smallButton, danger && styles.smallButtonDanger, disabled && styles.disabledAction]}
-      onPress={onPress}
-      disabled={disabled}
-    >
-      <Text style={[styles.smallButtonText, danger && styles.smallButtonDangerText]}>{title}</Text>
-    </Pressable>
-  );
-}
-
-function Badge({ text, danger }) {
-  return (
-    <View style={[styles.badge, danger && styles.badgeDanger]}>
-      <Text style={[styles.badgeText, danger && styles.badgeDangerText]}>{text}</Text>
-    </View>
-  );
-}
-
-function SegmentedControl({ items, value, onChange }) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-      {items.map((item) => (
-        <Pressable
-          key={item.value}
-          style={[styles.choiceChip, value === item.value && styles.choiceChipActive]}
-          onPress={() => onChange(item.value)}
-        >
-          <Text style={[styles.choiceChipText, value === item.value && styles.choiceChipTextActive]}>{item.label}</Text>
-        </Pressable>
-      ))}
-    </ScrollView>
-  );
-}
 
 const styles = StyleSheet.create({
   safeArea: {
