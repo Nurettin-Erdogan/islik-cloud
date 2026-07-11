@@ -10,3 +10,4 @@ dist-mobile-check
 apps/mobile/dist-mobile-check
 apps/mobile/dist-export-check
 apps/mobile/metro-out
+releases/
