@@ -27,7 +27,6 @@
         "monochromeImage": "./assets/monochrome-icon-v2.png",
         "backgroundColor": "#111827"
       },
-      "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
       "allowBackup": false,
@@ -36,7 +35,10 @@
       ]
     },
     "extra": {
-      "apiUrl": "https://islik-cloud-api.onrender.com"
+      "apiUrl": "https://islik-cloud-api.onrender.com",
+      "eas": {
+        "projectId": "f74f0b25-68ec-443e-9227-f4f468b8d759"
+      }
     },
     "jsEngine": "hermes",
     "plugins": [
@@ -48,6 +50,7 @@
         }
       ]
     ],
-    "description": "Müşteri servis taleplerini, randevuları ve ödemeleri tek yerden yönetin."
+    "description": "Müşteri servis taleplerini, randevuları ve ödemeleri tek yerden yönetin.",
+    "owner": "nuribaba"
   }
 }
