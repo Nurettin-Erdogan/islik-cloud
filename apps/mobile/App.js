@@ -163,6 +163,24 @@ function isLocalApiUrl(value) {
   return /\/\/(localhost|127\.0\.0\.1|\[?::1\]?)(:|\/|$)/i.test(String(value || ""));
 }
 
+function isConnectionError(error) {
+  const message = String(error?.message || "");
+  return message === "REQUEST_TIMEOUT" || message.startsWith("NETWORK_ERROR") || message.includes("Network request failed");
+}
+
+function getConnectionLabel(apiUrl, state) {
+  if (isLocalApiUrl(apiUrl)) {
+    return "Telefon bağlantısı ayarlanmalı";
+  }
+
+  const labels = {
+    checking: "Sunucu hazırlanıyor...",
+    ready: "Bağlantı hazır",
+    offline: "Bağlantı kurulamadı"
+  };
+  return labels[state] || "Sunucu adresi ayarlı";
+}
+
 function getExpoLanApiUrl() {
   const scriptUrl = NativeModules?.SourceCode?.scriptURL || "";
   const match = scriptUrl.match(/\/\/([^/:]+):/);
@@ -391,11 +409,11 @@ function App() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [showServerSettings, setShowServerSettings] = useState(false);
+  const [connectionState, setConnectionState] = useState("idle");
 
   function revealServerSettingsFor(error) {
-    const errorMessage = String(error?.message || "");
-
-    if (errorMessage.startsWith("NETWORK_ERROR") || errorMessage.includes("Network request failed")) {
+    if (isConnectionError(error)) {
+      setConnectionState("offline");
       setShowServerSettings(true);
     }
   }
@@ -437,6 +455,31 @@ function App() {
 
     boot();
   }, []);
+
+  useEffect(() => {
+    if (booting || token) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    setConnectionState("checking");
+
+    api.health(apiUrl)
+      .then(() => {
+        if (!cancelled) {
+          setConnectionState("ready");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setConnectionState("offline");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiUrl, booting, token]);
 
   useEffect(() => {
     if (token) {
@@ -503,11 +546,14 @@ function App() {
     const nextApiUrl = normalizeApiUrlInput(apiUrlDraft);
 
     if (!nextApiUrl) {
-      setMessage("Sunucu adresi bos olamaz.");
+      setMessage("Sunucu adresi boş olamaz.");
       return;
     }
 
     await AsyncStorage.setItem(API_URL_KEY, nextApiUrl);
+    if (nextApiUrl !== apiUrl) {
+      setConnectionState("checking");
+    }
     setApiUrl(nextApiUrl);
     setApiUrlDraft(nextApiUrl);
     setMessage("Sunucu adresi kaydedildi.");
@@ -518,17 +564,19 @@ function App() {
     const nextApiUrl = normalizeApiUrlInput(candidateUrl);
 
     if (!nextApiUrl) {
-      setMessage("Sunucu adresi bos olamaz.");
+      setMessage("Sunucu adresi boş olamaz.");
       return;
     }
 
     try {
       setLoading(true);
+      setConnectionState("checking");
       await api.health(nextApiUrl);
       await AsyncStorage.setItem(API_URL_KEY, nextApiUrl);
       setApiUrl(nextApiUrl);
       setApiUrlDraft(nextApiUrl);
-      setMessage("Sunucu baglantisi hazir: " + nextApiUrl);
+      setMessage("Sunucu bağlantısı hazır: " + nextApiUrl);
+      setConnectionState("ready");
       setShowServerSettings(false);
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
@@ -551,6 +599,7 @@ function App() {
       ]);
       setCustomers(customerResponse.data || []);
       setJobs(jobResponse.data || []);
+      setConnectionState("ready");
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
       revealServerSettingsFor(error);
@@ -566,6 +615,7 @@ function App() {
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(nextUser));
     setToken(nextToken);
     setUser(nextUser);
+    setConnectionState("ready");
     setMessage("");
   }
 
@@ -608,6 +658,7 @@ function App() {
       setPortalBusy(true);
       setMessage("");
       const response = await api.createPublicRequest(apiUrl, cleanForm);
+      setConnectionState("ready");
       setPortalResult(response.data);
       setTrackingForm({
         requestCode: response.data.requestCode,
@@ -637,6 +688,7 @@ function App() {
       setPortalBusy(true);
       setMessage("");
       const response = await api.getPublicRequest(apiUrl, requestCode, phone);
+      setConnectionState("ready");
       setTrackingForm({ requestCode, phone });
       setPortalResult(response.data);
     } catch (error) {
@@ -910,8 +962,14 @@ function App() {
             >
               <View style={styles.connectionCopy}>
                 <Text style={styles.connectionTitle}>Bağlantı ayarları</Text>
-                <Text style={styles.connectionValue}>
-                  {isLocalApiUrl(apiUrl) ? "Telefon bağlantısı ayarlanmalı" : "Sunucu adresi ayarlı"}
+                <Text
+                  style={[
+                    styles.connectionValue,
+                    connectionState === "ready" && styles.connectionValueReady,
+                    connectionState === "offline" && styles.connectionValueOffline
+                  ]}
+                >
+                  {getConnectionLabel(apiUrl, connectionState)}
                 </Text>
               </View>
               <Text style={styles.connectionToggleText}>{showServerSettings ? "Kapat" : "Aç"}</Text>
@@ -1224,8 +1282,12 @@ function App() {
 function translateError(message) {
   const text = String(message || "");
 
+  if (text === "REQUEST_TIMEOUT") {
+    return "Sunucu zamanında yanıt vermedi. Bağlantıyı kontrol edip tekrar dene.";
+  }
+
   if (text.startsWith("NETWORK_ERROR") || text.includes("Network request failed")) {
-    return "Sunucuya baglanamadim. Telefon ve bilgisayar ayni Wi-Fi'da olmali. Sunucu adresi http://BILGISAYAR_IP:4000 formatinda olmali; LAN IP ile Doldur butonunu kullanabilirsin.";
+    return "Sunucuya bağlanılamadı. İnternet bağlantını kontrol et. Yerel geliştirmede telefon ve bilgisayar aynı Wi-Fi'da olmalı.";
   }
 
   const map = {
@@ -1275,10 +1337,10 @@ function ServerCard({ apiUrlDraft, setApiUrlDraft, onSave, onTest, detectedApiUr
         placeholder="http://192.168.1.25:4000"
         autoCapitalize="none"
       />
-      {detectedApiUrl ? <Text style={styles.muted}>Telefon icin onerilen: {detectedApiUrl}</Text> : null}
+      {detectedApiUrl ? <Text style={styles.muted}>Telefon için önerilen: {detectedApiUrl}</Text> : null}
       {isLocalDraft ? (
         <Text style={styles.warningText}>
-          Telefonda localhost kullanilmaz. Bilgisayar IP adresini yaz: http://192.168.1.4:4000
+          Telefonda localhost kullanılamaz. Bilgisayar IP adresini yaz: http://192.168.1.4:4000
         </Text>
       ) : null}
       <View style={styles.actionRow}>
@@ -1767,6 +1829,12 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontSize: 12,
     fontWeight: "700"
+  },
+  connectionValueReady: {
+    color: "#0f766e"
+  },
+  connectionValueOffline: {
+    color: "#b91c1c"
   },
   connectionToggleText: {
     color: "#0f766e",

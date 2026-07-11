@@ -1,27 +1,39 @@
 export const DEFAULT_API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4000";
 
+const REQUEST_TIMEOUT_MS = 75000;
+
 function trimSlash(value) {
   return String(value || "").trim().replace(/\/+$/, "");
 }
 
 export async function request(apiUrl, token, path, options = {}) {
   const baseUrl = trimSlash(apiUrl || DEFAULT_API_URL);
+  const { timeoutMs = REQUEST_TIMEOUT_MS, ...requestOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const headers = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: "Bearer " + token } : {}),
-    ...(options.headers || {})
+    ...(requestOptions.headers || {})
   };
 
   let response;
 
   try {
     response = await fetch(baseUrl + path, {
-      ...options,
-      headers
+      ...requestOptions,
+      headers,
+      signal: controller.signal
     });
   } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("REQUEST_TIMEOUT");
+    }
+
     const detail = error?.message ? ": " + error.message : "";
     throw new Error("NETWORK_ERROR" + detail);
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!response.ok) {
