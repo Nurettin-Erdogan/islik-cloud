@@ -47,6 +47,8 @@ import {
 const TOKEN_KEY = "servis_defteri_mobile_token";
 const USER_KEY = "servis_defteri_mobile_user";
 const API_URL_KEY = "servis_defteri_mobile_api_url";
+const CUSTOMERS_CACHE_KEY = "servis_defteri_mobile_customers";
+const JOBS_CACHE_KEY = "servis_defteri_mobile_jobs";
 
 const initialRequestForm = {
   name: "",
@@ -92,6 +94,27 @@ const initialJobForm = {
   appointmentAt: "",
   photos: []
 };
+
+function parseStoredJson(value, fallback) {
+  if (!value) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function serializeJobsForCache(items) {
+  return JSON.stringify(
+    items.slice(0, 100).map((job) => ({
+      ...job,
+      photos: []
+    }))
+  );
+}
 
 function getPaidAmount(job) {
   const price = Number(job.price || 0);
@@ -421,10 +444,12 @@ function App() {
   useEffect(() => {
     async function boot() {
       try {
-        const [storedApiUrl, storedToken, storedUser] = await Promise.all([
+        const [storedApiUrl, storedToken, storedUser, storedCustomers, storedJobs] = await Promise.all([
           AsyncStorage.getItem(API_URL_KEY),
           AsyncStorage.getItem(TOKEN_KEY),
-          AsyncStorage.getItem(USER_KEY)
+          AsyncStorage.getItem(USER_KEY),
+          AsyncStorage.getItem(CUSTOMERS_CACHE_KEY),
+          AsyncStorage.getItem(JOBS_CACHE_KEY)
         ]);
         const detectedApiUrl = getDefaultMobileApiUrl();
         const storedLooksLocal = storedApiUrl && isLocalApiUrl(storedApiUrl);
@@ -437,15 +462,17 @@ function App() {
         }
 
         if (storedToken) {
-          setToken(storedToken);
-          setUser(storedUser ? JSON.parse(storedUser) : null);
+          const cachedUser = parseStoredJson(storedUser, null);
 
-          try {
-            const response = await api.me(nextApiUrl, storedToken);
-            setUser(response.data.user);
-            await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
-          } catch {
-            await clearSession();
+          if (cachedUser) {
+            const cachedCustomers = parseStoredJson(storedCustomers, []);
+            const cachedJobs = parseStoredJson(storedJobs, []);
+            setToken(storedToken);
+            setUser(cachedUser);
+            setCustomers(Array.isArray(cachedCustomers) ? cachedCustomers : []);
+            setJobs(Array.isArray(cachedJobs) ? cachedJobs : []);
+          } else {
+            await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY, CUSTOMERS_CACHE_KEY, JOBS_CACHE_KEY]);
           }
         }
       } finally {
@@ -482,10 +509,22 @@ function App() {
   }, [apiUrl, booting, token]);
 
   useEffect(() => {
-    if (token) {
+    if (!booting && token) {
       loadData();
     }
-  }, [token, apiUrl]);
+  }, [token, apiUrl, booting]);
+
+  useEffect(() => {
+    if (!booting && token) {
+      AsyncStorage.setItem(CUSTOMERS_CACHE_KEY, JSON.stringify(customers.slice(0, 250))).catch(() => {});
+    }
+  }, [booting, token, customers]);
+
+  useEffect(() => {
+    if (!booting && token) {
+      AsyncStorage.setItem(JOBS_CACHE_KEY, serializeJobsForCache(jobs)).catch(() => {});
+    }
+  }, [booting, token, jobs]);
 
   const openJobs = useMemo(() => jobs.filter(isOpenJob), [jobs]);
   const todayJobs = useMemo(
@@ -534,12 +573,29 @@ function App() {
     });
   }, [jobs, jobSearch, customerSearch, jobStatusFilter, paymentStatusFilter]);
 
+  async function clearCachedData() {
+    await AsyncStorage.multiRemove([CUSTOMERS_CACHE_KEY, JOBS_CACHE_KEY]);
+    setCustomers([]);
+    setJobs([]);
+  }
+
   async function clearSession() {
-    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY, CUSTOMERS_CACHE_KEY, JOBS_CACHE_KEY]);
     setToken(null);
     setUser(null);
     setCustomers([]);
     setJobs([]);
+  }
+
+  async function handleApiError(error) {
+    if (error?.status === 401 && token) {
+      await clearSession();
+      setMessage("Oturum süresi doldu. Lütfen yeniden giriş yap.");
+      return;
+    }
+
+    setMessage("Hata: " + translateError(error.message));
+    revealServerSettingsFor(error);
   }
 
   async function saveApiUrl() {
@@ -552,6 +608,7 @@ function App() {
 
     await AsyncStorage.setItem(API_URL_KEY, nextApiUrl);
     if (nextApiUrl !== apiUrl) {
+      await clearCachedData();
       setConnectionState("checking");
     }
     setApiUrl(nextApiUrl);
@@ -573,14 +630,16 @@ function App() {
       setConnectionState("checking");
       await api.health(nextApiUrl);
       await AsyncStorage.setItem(API_URL_KEY, nextApiUrl);
+      if (nextApiUrl !== apiUrl) {
+        await clearCachedData();
+      }
       setApiUrl(nextApiUrl);
       setApiUrlDraft(nextApiUrl);
       setMessage("Sunucu bağlantısı hazır: " + nextApiUrl);
       setConnectionState("ready");
       setShowServerSettings(false);
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     } finally {
       setLoading(false);
     }
@@ -601,8 +660,7 @@ function App() {
       setJobs(jobResponse.data || []);
       setConnectionState("ready");
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     } finally {
       setLoading(false);
     }
@@ -631,8 +689,7 @@ function App() {
             });
       await saveSession(response);
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     } finally {
       setLoading(false);
     }
@@ -666,8 +723,7 @@ function App() {
       });
       setRequestForm(initialRequestForm);
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     } finally {
       setPortalBusy(false);
     }
@@ -692,8 +748,7 @@ function App() {
       setTrackingForm({ requestCode, phone });
       setPortalResult(response.data);
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     } finally {
       setPortalBusy(false);
     }
@@ -738,8 +793,7 @@ function App() {
       setCustomerView("list");
       setMessage(editingCustomerId ? "Müşteri güncellendi." : "Müşteri eklendi.");
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     } finally {
       setLoading(false);
     }
@@ -770,8 +824,7 @@ function App() {
             setCustomers((current) => current.filter((item) => item.id !== customer.id));
             setJobs((current) => current.filter((job) => job.customerId !== customer.id));
           } catch (error) {
-            setMessage("Hata: " + translateError(error.message));
-            revealServerSettingsFor(error);
+            await handleApiError(error);
           }
         }
       }
@@ -848,8 +901,7 @@ function App() {
       setJobView("list");
       setMessage(editingJobId ? "Talep güncellendi." : "Talep eklendi.");
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     } finally {
       setLoading(false);
     }
@@ -861,8 +913,7 @@ function App() {
       upsertJob(response.data);
       setMessage("Talep incelemeye alındı.");
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     }
   }
 
@@ -872,8 +923,7 @@ function App() {
       upsertJob(response.data);
       setMessage("Talep tamamlandı.");
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     }
   }
 
@@ -883,8 +933,7 @@ function App() {
       upsertJob(response.data);
       setMessage("Talep iptal edildi.");
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     }
   }
 
@@ -896,8 +945,7 @@ function App() {
       });
       upsertJob(response.data);
     } catch (error) {
-      setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+      await handleApiError(error);
     }
   }
 
@@ -912,8 +960,7 @@ function App() {
             await api.deleteJob(apiUrl, token, job.id);
             setJobs((current) => current.filter((item) => item.id !== job.id));
           } catch (error) {
-            setMessage("Hata: " + translateError(error.message));
-            revealServerSettingsFor(error);
+            await handleApiError(error);
           }
         }
       }

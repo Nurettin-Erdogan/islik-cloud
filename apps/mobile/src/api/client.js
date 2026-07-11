@@ -46,7 +46,9 @@ export async function request(apiUrl, token, path, options = {}) {
       message = response.statusText || message;
     }
 
-    throw new Error(message);
+    const requestError = new Error(message);
+    requestError.status = response.status;
+    throw requestError;
   }
 
   if (response.status === 204) {
