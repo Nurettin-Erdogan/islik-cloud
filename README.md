@@ -2,7 +2,7 @@
 
 Servis Defteri; küçük servis işletmeleri için geliştirilen müşteri, iş, ödeme ve operasyon takip panelidir.
 
-Bu proje, küçük işletmelerin günlük işlerini daha düzenli takip edebilmesi için geliştirilen full-stack web uygulamasıdır. Amaç; teknik servis, tamirci, saha hizmeti veren küçük işletmeler ve bireysel çalışanlar için müşteri ve iş süreçlerini tek panelden yönetilebilir hale getirmektir.
+Bu proje, küçük işletmelerin günlük işlerini daha düzenli takip edebilmesi için geliştirilen full-stack web ve mobil uygulamadır. Amaç; teknik servis, tamirci, saha hizmeti veren küçük işletmeler ve bireysel çalışanlar için müşteri ve iş süreçlerini tek panelden yönetilebilir hale getirmektir.
 
 ## Canlı Demo
 
@@ -14,7 +14,7 @@ Not: Backend Render Free üzerinde çalıştığı için uzun süre istek gelmez
 
 ## Ürün Yönü
 
-Servis Defteri artık web sitesi gibi değil, mobil öncelikli PWA servis uygulaması olarak geliştirilir. Kısa vadede telefona kurulabilir web uygulaması güçlendirilecek; ürün oturduktan sonra aynı kod tabanı Capacitor ile Android/iOS paketine alınabilir.
+Servis Defteri mobil öncelikli geliştirilir. Web uygulamasına ek olarak `apps/mobile` altında Expo ile yazılmış gerçek Android/iOS uygulaması bulunur; Capacitor kullanılmaz.
 
 ## Durum
 
@@ -93,7 +93,7 @@ npm install
 npm start
 ```
 
-Masaüstündeki `Servis Defteri Mobil Baslat.cmd` dosyası API'yi ve Expo uygulamasını birlikte başlatır. Fiziksel telefonda API adresi olarak `localhost` yerine bilgisayarın yerel IP adresi kullanılmalıdır.
+Masaüstündeki `Servis Defteri Mobil Baslat.cmd` dosyası API'yi ve Expo uygulamasını birlikte başlatır. Fiziksel telefonda yerel geliştirme için bilgisayarın IP adresi kullanılır. EAS preview APK ve production AAB paketleri Render API adresine bağlanır.
 
 ## Teknolojiler
 

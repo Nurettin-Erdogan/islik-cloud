@@ -2,34 +2,43 @@
   "expo": {
     "name": "Servis Defteri",
     "slug": "servis-defteri",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-v2.png",
     "userInterfaceStyle": "light",
     "scheme": "servisdefteri",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/splash-v2.png",
       "resizeMode": "contain",
-      "backgroundColor": "#f8fafc"
+      "backgroundColor": "#111827"
     },
     "assetBundlePatterns": [
       "assets/**/*"
     ],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.nurettin.servisdefteri"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nurettin.servisdefteri",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.nurettin.servisdefteri",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0f766e"
-      }
+        "foregroundImage": "./assets/adaptive-icon-v2.png",
+        "monochromeImage": "./assets/monochrome-icon-v2.png",
+        "backgroundColor": "#111827"
+      },
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
+      "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "extra": {
-      "apiUrl": "http://localhost:4000"
+      "apiUrl": "https://islik-cloud-api.onrender.com"
     },
-    "jsEngine": "jsc",
+    "jsEngine": "hermes",
     "plugins": [
       [
         "expo-image-picker",
@@ -38,6 +47,7 @@
           "cameraPermission": "Arıza fotoğrafı çekmek için kamera izni kullanılır."
         }
       ]
-    ]
+    ],
+    "description": "Müşteri servis taleplerini, randevuları ve ödemeleri tek yerden yönetin."
   }
 }

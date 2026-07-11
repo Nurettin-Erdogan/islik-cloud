@@ -1,24 +1,49 @@
 # Servis Defteri Mobile
 
-Expo ile yazilmis gercek mobil frontend. Backend olarak mevcut Express API kullanilir.
+Expo ile yazilmis gercek mobil uygulamadir. Mevcut Express API'yi kullanir.
 
-## Kurulum
+## Yerel Calistirma
 
 ```bash
 cd apps/mobile
 npm install
+npm start
 ```
 
-## Calistirma
+Masaustundeki `Servis Defteri Mobil Baslat.cmd` dosyasi API ve Expo'yu birlikte baslatir. Fiziksel telefonda `localhost` yerine bilgisayarin Wi-Fi IP adresi kullanilir.
 
-Masaustundeki `Servis Defteri Mobil Baslat.cmd` dosyasini ac. API ve Expo birlikte baslar. Bu dosya bilgisayarin Wi-Fi IP adresini bulup Expo'ya `EXPO_PUBLIC_API_URL` olarak verir.
+## Kontroller
 
-Telefonla Expo Go QR kodunu okutunca uygulama bilgisayarin LAN IP adresini otomatik yakalamaya calisir.
-
-Fiziksel telefonda API adresi olarak `localhost` kullanilmaz. Dogru format:
-
-```text
-http://BILGISAYAR_IP:4000
+```bash
+npm run doctor
+npm run config:check
+npm run export:android
 ```
 
-Uygulamadaki Sunucu kartinda `LAN IP ile Doldur` ve `Test Et` butonlari var. Test basariliysa usta girisi ve musteri talebi calisir.
+## APK ve AAB
+
+Ilk kez EAS hesabina gir:
+
+```bash
+npx eas-cli login
+```
+
+Telefona kurulabilir test APK'si:
+
+```bash
+npm run build:apk
+```
+
+Google Play icin production AAB:
+
+```bash
+npm run build:aab
+```
+
+iOS production paketi:
+
+```bash
+npm run build:ios
+```
+
+Preview ve production paketleri varsayilan olarak `https://islik-cloud-api.onrender.com` API adresini kullanir. Yerel Expo Go gelistirmesinde `.env.local` veya baslatma dosyasinin verdigi LAN adresi kullanilir.
