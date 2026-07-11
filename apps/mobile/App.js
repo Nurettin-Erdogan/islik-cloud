@@ -130,6 +130,25 @@ function matchesSearch(fields, query) {
   return fields.some((field) => normalizeSearch(field).includes(normalizedQuery));
 }
 
+function getJobSearchFields(job) {
+  return [
+    job.title,
+    job.description,
+    job.requestCode,
+    job.productCategory,
+    productCategoryLabels[job.productCategory],
+    job.productBrand,
+    job.productModel,
+    statusLabels[job.status],
+    paymentStatusLabels[job.paymentStatus],
+    priorityLabels[job.priority],
+    job.customer?.name,
+    job.customer?.phone,
+    job.customer?.address,
+    job.customer?.note
+  ];
+}
+
 function normalizeApiUrlInput(value) {
   const trimmed = String(value || "").trim().replace(/\/+$/, "");
 
@@ -357,6 +376,8 @@ function App() {
   const [portalResult, setPortalResult] = useState(null);
   const [portalBusy, setPortalBusy] = useState(false);
   const [activeTab, setActiveTab] = useState("today");
+  const [customerView, setCustomerView] = useState("list");
+  const [jobView, setJobView] = useState("list");
   const [boardFilter, setBoardFilter] = useState("today");
   const [customers, setCustomers] = useState([]);
   const [jobs, setJobs] = useState([]);
@@ -453,22 +474,13 @@ function App() {
       matchesSearch([customer.name, customer.phone, customer.address, customer.note], customerSearch)
     );
   }, [customers, customerSearch]);
+  const jobListResults = useMemo(
+    () => jobs.filter((job) => matchesSearch(getJobSearchFields(job), jobSearch)),
+    [jobs, jobSearch]
+  );
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
-      const matchesJob = matchesSearch(
-        [
-          job.title,
-          job.description,
-          job.requestCode,
-          job.productCategory,
-          job.productBrand,
-          job.productModel,
-          job.customer?.name,
-          job.customer?.phone,
-          job.customer?.address
-        ],
-        jobSearch
-      );
+      const matchesJob = matchesSearch(getJobSearchFields(job), jobSearch);
       const matchesCustomer = matchesSearch(
         [job.customer?.name, job.customer?.phone, job.customer?.address, job.customer?.note],
         customerSearch
@@ -654,6 +666,14 @@ function App() {
     });
   }
 
+  function startNewCustomer() {
+    setCustomerForm(initialCustomerForm);
+    setEditingCustomerId(null);
+    setCustomerView("form");
+    setActiveTab("customers");
+    setMessage("");
+  }
+
   async function saveCustomer() {
     try {
       setLoading(true);
@@ -663,6 +683,7 @@ function App() {
       upsertCustomer(response.data);
       setCustomerForm(initialCustomerForm);
       setEditingCustomerId(null);
+      setCustomerView("list");
       setMessage(editingCustomerId ? "Müşteri güncellendi." : "Müşteri eklendi.");
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
@@ -680,7 +701,9 @@ function App() {
       address: customer.address || "",
       note: customer.note || ""
     });
+    setCustomerView("form");
     setActiveTab("customers");
+    setMessage("");
   }
 
   async function confirmDeleteCustomer(customer) {
@@ -696,7 +719,7 @@ function App() {
             setJobs((current) => current.filter((job) => job.customerId !== customer.id));
           } catch (error) {
             setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+            revealServerSettingsFor(error);
           }
         }
       }
@@ -709,6 +732,7 @@ function App() {
       customerId: customer.id
     });
     setEditingJobId(null);
+    setJobView("form");
     setActiveTab("jobs");
     setMessage(customer.name + " için talep açılıyor.");
   }
@@ -731,7 +755,9 @@ function App() {
       appointmentAt: appointment,
       photos: normalizePhotoList(job.photos)
     });
+    setJobView("form");
     setActiveTab("jobs");
+    setMessage("");
   }
 
   async function saveJob() {
@@ -767,6 +793,7 @@ function App() {
       upsertJob(response.data);
       setJobForm(initialJobForm);
       setEditingJobId(null);
+      setJobView("list");
       setMessage(editingJobId ? "Talep güncellendi." : "Talep eklendi.");
     } catch (error) {
       setMessage("Hata: " + translateError(error.message));
@@ -834,7 +861,7 @@ function App() {
             setJobs((current) => current.filter((item) => item.id !== job.id));
           } catch (error) {
             setMessage("Hata: " + translateError(error.message));
-      revealServerSettingsFor(error);
+            revealServerSettingsFor(error);
           }
         }
       }
@@ -1027,23 +1054,48 @@ function App() {
   function renderCustomers() {
     return (
       <View style={styles.stack}>
-        <CustomerForm
-          form={customerForm}
-          setForm={setCustomerForm}
-          editing={Boolean(editingCustomerId)}
-          onSubmit={saveCustomer}
-          onReset={() => {
-            setCustomerForm(initialCustomerForm);
-            setEditingCustomerId(null);
+        <SegmentedControl
+          items={[
+            { value: "list", label: "Müşteriler" },
+            { value: "form", label: customerView === "form" && editingCustomerId ? "Düzenle" : "Yeni Müşteri" }
+          ]}
+          value={customerView}
+          onChange={(value) => {
+            if (value === customerView) {
+              return;
+            }
+
+            if (value === "form") {
+              startNewCustomer();
+              return;
+            }
+
+            setCustomerView(value);
           }}
         />
-        <SearchInput value={customerSearch} onChangeText={setCustomerSearch} placeholder="Müşteri ara" />
-        <CustomerList
-          customers={filteredCustomers}
-          onJob={startJobForCustomer}
-          onEdit={editCustomer}
-          onDelete={confirmDeleteCustomer}
-        />
+        {customerView === "form" ? (
+          <CustomerForm
+            form={customerForm}
+            setForm={setCustomerForm}
+            editing={Boolean(editingCustomerId)}
+            onSubmit={saveCustomer}
+            onReset={() => {
+              setCustomerForm(initialCustomerForm);
+              setEditingCustomerId(null);
+              setCustomerView("list");
+            }}
+          />
+        ) : (
+          <View style={styles.stack}>
+            <SearchInput value={customerSearch} onChangeText={setCustomerSearch} placeholder="Müşteri ara" />
+            <CustomerList
+              customers={filteredCustomers}
+              onJob={startJobForCustomer}
+              onEdit={editCustomer}
+              onDelete={confirmDeleteCustomer}
+            />
+          </View>
+        )}
       </View>
     );
   }
@@ -1051,28 +1103,56 @@ function App() {
   function renderJobs() {
     return (
       <View style={styles.stack}>
-        <JobForm
-          form={jobForm}
-          setForm={setJobForm}
-          customers={customers}
-          editing={Boolean(editingJobId)}
-          onSubmit={saveJob}
-          onReset={() => {
-            setJobForm(initialJobForm);
-            setEditingJobId(null);
+        <SegmentedControl
+          items={[
+            { value: "list", label: "Talepler" },
+            { value: "form", label: jobView === "form" && editingJobId ? "Düzenle" : "Yeni Talep" }
+          ]}
+          value={jobView}
+          onChange={(value) => {
+            if (value === jobView) {
+              return;
+            }
+
+            if (value === "form") {
+              setJobForm(initialJobForm);
+              setEditingJobId(null);
+              setMessage("");
+            }
+
+            setJobView(value);
           }}
         />
-        <JobList
-          jobs={jobs}
-          emptyText="Henüz talep yok."
-          onEdit={editJob}
-          onStart={markJobInProgress}
-          onComplete={markJobCompleted}
-          onCancel={markJobCancelled}
-          onPaid={markJobPaid}
-          onDelete={confirmDeleteJob}
-          onOpenPhoto={setPreviewPhoto}
-        />
+        {jobView === "form" ? (
+          <JobForm
+            form={jobForm}
+            setForm={setJobForm}
+            customers={customers}
+            editing={Boolean(editingJobId)}
+            onSubmit={saveJob}
+            onAddCustomer={startNewCustomer}
+            onReset={() => {
+              setJobForm(initialJobForm);
+              setEditingJobId(null);
+              setJobView("list");
+            }}
+          />
+        ) : (
+          <View style={styles.stack}>
+            <SearchInput value={jobSearch} onChangeText={setJobSearch} placeholder="Kod, müşteri, ürün veya arıza ara" />
+            <JobList
+              jobs={jobListResults}
+              emptyText={jobSearch.trim() ? "Aramana uygun talep bulunamadı." : "Henüz talep yok."}
+              onEdit={editJob}
+              onStart={markJobInProgress}
+              onComplete={markJobCompleted}
+              onCancel={markJobCancelled}
+              onPaid={markJobPaid}
+              onDelete={confirmDeleteJob}
+              onOpenPhoto={setPreviewPhoto}
+            />
+          </View>
+        )}
       </View>
     );
   }
@@ -1164,7 +1244,7 @@ function getActiveTitle(activeTab) {
   const titles = {
     today: "Bugünün İşleri",
     customers: "Müşteriler",
-    jobs: "Talep Oluştur",
+    jobs: "Talepler",
     search: "Talep Ara",
     settings: "Ayarlar"
   };
@@ -1292,13 +1372,17 @@ function CustomerForm({ form, setForm, editing, onSubmit, onReset }) {
         value={form.name}
         onChangeText={(value) => setForm({ ...form, name: stripDigits(value) })}
         placeholder="Ahmet Yılmaz"
+        autoCapitalize="words"
+        textContentType="name"
       />
       <Input
         label="Telefon"
         value={form.phone}
         onChangeText={(value) => setForm({ ...form, phone: digitsOnly(value) })}
         placeholder="05551234567"
-        keyboardType="number-pad"
+        keyboardType="phone-pad"
+        textContentType="telephoneNumber"
+        maxLength={11}
       />
       <Input
         label="Adres"
@@ -1323,14 +1407,24 @@ function CustomerForm({ form, setForm, editing, onSubmit, onReset }) {
   );
 }
 
-function JobForm({ form, setForm, customers, editing, onSubmit, onReset }) {
+function JobForm({ form, setForm, customers, editing, onSubmit, onReset, onAddCustomer }) {
   const selectedCustomer = customers.find((customer) => customer.id === form.customerId);
+
+  if (customers.length === 0) {
+    return (
+      <Card>
+        <Text style={styles.cardTitle}>Talep Oluştur</Text>
+        <Text style={styles.muted}>Talep açmak için önce bir müşteri eklemelisin.</Text>
+        <PrimaryButton title="Müşteri Ekle" onPress={onAddCustomer} />
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <Text style={styles.cardTitle}>{editing ? "Talep Düzenle" : "Talep Oluştur"}</Text>
       <Text style={styles.label}>Müşteri</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        {customers.length === 0 ? <Text style={styles.muted}>Önce müşteri ekle.</Text> : null}
         {customers.map((customer) => (
           <Pressable
             key={customer.id}
