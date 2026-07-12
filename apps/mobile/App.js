@@ -1,5 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useMemo, useState } from "react";
+import CalendarDays from "lucide-react-native/icons/calendar-days";
+import ClipboardList from "lucide-react-native/icons/clipboard-list";
+import RefreshCw from "lucide-react-native/icons/refresh-cw";
+import SearchIcon from "lucide-react-native/icons/search";
+import SettingsIcon from "lucide-react-native/icons/settings";
+import Users from "lucide-react-native/icons/users";
 import {
   ActivityIndicator,
   Alert,
@@ -17,7 +23,7 @@ import {
   Text,
   View
 } from "react-native";
-import { api, DEFAULT_API_URL } from "./src/api/client";
+import { api, CLOUD_API_URL, DEFAULT_API_URL, PREFER_LAN_API } from "./src/api/client";
 import { CustomerPortal } from "./src/components/CustomerPortal";
 import { JobStatusTrail } from "./src/components/JobStatusTrail";
 import { PhotoPicker, PhotoPreviewModal, PhotoStrip, normalizePhotoList } from "./src/components/Photos";
@@ -36,6 +42,7 @@ import {
   digitsOnly,
   formatCurrency,
   formatDateTime,
+  formatPhone,
   isOpenJob,
   isOverdueJob,
   isSameLocalDay,
@@ -49,6 +56,8 @@ const USER_KEY = "servis_defteri_mobile_user";
 const API_URL_KEY = "servis_defteri_mobile_api_url";
 const CUSTOMERS_CACHE_KEY = "servis_defteri_mobile_customers";
 const JOBS_CACHE_KEY = "servis_defteri_mobile_jobs";
+const CLOUD_SWITCHING_MESSAGE = "Yerel bağlantı kurulamadı. Bulut sunucusuna geçiliyor...";
+const CLOUD_READY_MESSAGE = "Bulut bağlantısı hazır. İşlemi yeniden deneyebilirsin.";
 
 const initialRequestForm = {
   name: "",
@@ -186,44 +195,47 @@ function isLocalApiUrl(value) {
   return /\/\/(localhost|127\.0\.0\.1|\[?::1\]?)(:|\/|$)/i.test(String(value || ""));
 }
 
+function isPrivateNetworkApiUrl(value) {
+  return /\/\/(10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|169\.254(?:\.\d{1,3}){2})(?::|\/|$)/i.test(
+    String(value || "")
+  );
+}
+
+function getHealthTimeout(apiUrl) {
+  return isPrivateNetworkApiUrl(apiUrl) ? 8000 : 75000;
+}
+
 function isConnectionError(error) {
   const message = String(error?.message || "");
   return message === "REQUEST_TIMEOUT" || message.startsWith("NETWORK_ERROR") || message.includes("Network request failed");
-}
-
-function getConnectionLabel(apiUrl, state) {
-  if (isLocalApiUrl(apiUrl)) {
-    return "Telefon bağlantısı ayarlanmalı";
-  }
-
-  const labels = {
-    checking: "Sunucu hazırlanıyor...",
-    ready: "Bağlantı hazır",
-    offline: "Bağlantı kurulamadı"
-  };
-  return labels[state] || "Sunucu adresi ayarlı";
 }
 
 function getExpoLanApiUrl() {
   const scriptUrl = NativeModules?.SourceCode?.scriptURL || "";
   const match = scriptUrl.match(/\/\/([^/:]+):/);
   const host = match?.[1];
+  const candidate = host ? "http://" + host + ":4000" : "";
 
-  if (!host || host === "localhost" || host === "127.0.0.1" || host === "::1") {
-    return "";
-  }
-
-  return "http://" + host + ":4000";
+  return isPrivateNetworkApiUrl(candidate) ? candidate : "";
 }
 
 function getSuggestedMobileApiUrl() {
   const configuredUrl = normalizeApiUrlInput(DEFAULT_API_URL);
+  const expoLanUrl = getExpoLanApiUrl();
+
+  if (
+    __DEV__ &&
+    expoLanUrl &&
+    (PREFER_LAN_API || isLocalApiUrl(configuredUrl) || isPrivateNetworkApiUrl(configuredUrl))
+  ) {
+    return expoLanUrl;
+  }
 
   if (configuredUrl && !isLocalApiUrl(configuredUrl)) {
     return configuredUrl;
   }
 
-  return getExpoLanApiUrl();
+  return expoLanUrl;
 }
 
 function getDefaultMobileApiUrl() {
@@ -433,12 +445,35 @@ function App() {
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [showServerSettings, setShowServerSettings] = useState(false);
   const [connectionState, setConnectionState] = useState("idle");
+  const [connectionRetrying, setConnectionRetrying] = useState(false);
 
-  function revealServerSettingsFor(error) {
+  function markConnectionOffline(error) {
     if (isConnectionError(error)) {
       setConnectionState("offline");
-      setShowServerSettings(true);
     }
+  }
+
+  async function switchToCloudFallback() {
+    const fallbackUrl = normalizeApiUrlInput(CLOUD_API_URL);
+    const currentIsLocal = isLocalApiUrl(apiUrl) || isPrivateNetworkApiUrl(apiUrl);
+
+    if (!currentIsLocal || !fallbackUrl || apiUrl === fallbackUrl) {
+      return false;
+    }
+
+    try {
+      await AsyncStorage.setItem(API_URL_KEY, fallbackUrl);
+      await clearCachedData();
+    } catch {
+      // Runtime state can still recover even if local cache storage is unavailable.
+    }
+
+    setApiUrl(fallbackUrl);
+    setApiUrlDraft(fallbackUrl);
+    setShowServerSettings(false);
+    setConnectionState("checking");
+    setMessage(CLOUD_SWITCHING_MESSAGE);
+    return true;
   }
 
   useEffect(() => {
@@ -452,21 +487,34 @@ function App() {
           AsyncStorage.getItem(JOBS_CACHE_KEY)
         ]);
         const detectedApiUrl = getDefaultMobileApiUrl();
-        const storedLooksLocal = storedApiUrl && isLocalApiUrl(storedApiUrl);
-        const nextApiUrl = storedApiUrl && !storedLooksLocal ? normalizeApiUrlInput(storedApiUrl) : detectedApiUrl;
+        const normalizedStoredApiUrl = normalizeApiUrlInput(storedApiUrl);
+        const storedIsDevelopmentAddress =
+          isLocalApiUrl(normalizedStoredApiUrl) || isPrivateNetworkApiUrl(normalizedStoredApiUrl);
+        const shouldRefreshConfiguredApi =
+          detectedApiUrl &&
+          normalizedStoredApiUrl !== detectedApiUrl &&
+          (__DEV__ || storedIsDevelopmentAddress);
+        const shouldUseDetected =
+          !normalizedStoredApiUrl || isLocalApiUrl(normalizedStoredApiUrl) || shouldRefreshConfiguredApi;
+        const nextApiUrl = shouldUseDetected ? detectedApiUrl : normalizedStoredApiUrl;
+        const apiUrlChanged = Boolean(normalizedStoredApiUrl && normalizedStoredApiUrl !== nextApiUrl);
         setApiUrl(nextApiUrl);
         setApiUrlDraft(nextApiUrl);
 
-        if (!storedApiUrl || storedLooksLocal) {
+        if (!normalizedStoredApiUrl || apiUrlChanged) {
           await AsyncStorage.setItem(API_URL_KEY, nextApiUrl);
+        }
+
+        if (apiUrlChanged) {
+          await AsyncStorage.multiRemove([CUSTOMERS_CACHE_KEY, JOBS_CACHE_KEY]);
         }
 
         if (storedToken) {
           const cachedUser = parseStoredJson(storedUser, null);
 
           if (cachedUser) {
-            const cachedCustomers = parseStoredJson(storedCustomers, []);
-            const cachedJobs = parseStoredJson(storedJobs, []);
+            const cachedCustomers = apiUrlChanged ? [] : parseStoredJson(storedCustomers, []);
+            const cachedJobs = apiUrlChanged ? [] : parseStoredJson(storedJobs, []);
             setToken(storedToken);
             setUser(cachedUser);
             setCustomers(Array.isArray(cachedCustomers) ? cachedCustomers : []);
@@ -491,14 +539,22 @@ function App() {
     let cancelled = false;
     setConnectionState("checking");
 
-    api.health(apiUrl)
+    api.health(apiUrl, getHealthTimeout(apiUrl))
       .then(() => {
         if (!cancelled) {
           setConnectionState("ready");
+          setMessage((current) =>
+            current === CLOUD_SWITCHING_MESSAGE ? CLOUD_READY_MESSAGE : current
+          );
         }
       })
-      .catch(() => {
-        if (!cancelled) {
+      .catch(async () => {
+        if (cancelled) {
+          return;
+        }
+
+        const switchedToCloud = await switchToCloudFallback();
+        if (!switchedToCloud && !cancelled) {
           setConnectionState("offline");
         }
       });
@@ -594,8 +650,17 @@ function App() {
       return;
     }
 
+    if (isConnectionError(error)) {
+      const switchedToCloud = await switchToCloudFallback();
+
+      if (!switchedToCloud) {
+        setMessage("");
+        markConnectionOffline(error);
+      }
+      return;
+    }
+
     setMessage("Hata: " + translateError(error.message));
-    revealServerSettingsFor(error);
   }
 
   async function saveApiUrl() {
@@ -617,6 +682,27 @@ function App() {
     setShowServerSettings(false);
   }
 
+  async function retryApiConnection() {
+    if (connectionRetrying) {
+      return;
+    }
+
+    try {
+      setConnectionRetrying(true);
+      setMessage("");
+      await api.health(apiUrl, getHealthTimeout(apiUrl));
+      setConnectionState("ready");
+
+      if (token) {
+        await loadData();
+      }
+    } catch {
+      setConnectionState("offline");
+    } finally {
+      setConnectionRetrying(false);
+    }
+  }
+
   async function testApiConnection(candidateUrl = apiUrlDraft) {
     const nextApiUrl = normalizeApiUrlInput(candidateUrl);
 
@@ -628,7 +714,7 @@ function App() {
     try {
       setLoading(true);
       setConnectionState("checking");
-      await api.health(nextApiUrl);
+      await api.health(nextApiUrl, getHealthTimeout(nextApiUrl));
       await AsyncStorage.setItem(API_URL_KEY, nextApiUrl);
       if (nextApiUrl !== apiUrl) {
         await clearCachedData();
@@ -783,10 +869,23 @@ function App() {
 
   async function saveCustomer() {
     try {
+      const payload = {
+        ...customerForm,
+        name: stripDigits(customerForm.name).trim(),
+        phone: digitsOnly(customerForm.phone),
+        address: String(customerForm.address || "").trim(),
+        note: String(customerForm.note || "").trim()
+      };
+
+      if (payload.name.length < 2) {
+        setMessage("Hata: Müşteri adı en az 2 karakter olmalı.");
+        return;
+      }
+
       setLoading(true);
       const response = editingCustomerId
-        ? await api.updateCustomer(apiUrl, token, editingCustomerId, customerForm)
-        : await api.createCustomer(apiUrl, token, customerForm);
+        ? await api.updateCustomer(apiUrl, token, editingCustomerId, payload)
+        : await api.createCustomer(apiUrl, token, payload);
       upsertCustomer(response.data);
       setCustomerForm(initialCustomerForm);
       setEditingCustomerId(null);
@@ -867,9 +966,19 @@ function App() {
 
   async function saveJob() {
     try {
-      setLoading(true);
+      const title = String(jobForm.title || "").trim();
       const price = Number(jobForm.price || 0);
       let paidAmount = Number(jobForm.paidAmount || 0);
+
+      if (!jobForm.customerId) {
+        setMessage("Hata: Bir müşteri seçmelisin.");
+        return;
+      }
+
+      if (title.length < 2) {
+        setMessage("Hata: Talep başlığı en az 2 karakter olmalı.");
+        return;
+      }
 
       if (jobForm.paymentStatus === "unpaid") {
         paidAmount = 0;
@@ -877,6 +986,11 @@ function App() {
 
       if (jobForm.paymentStatus === "paid") {
         paidAmount = price;
+      }
+
+      if (jobForm.paymentStatus === "partial" && (paidAmount <= 0 || paidAmount >= price)) {
+        setMessage("Hata: Kısmi ödeme 0'dan büyük ve toplam ücretten küçük olmalı.");
+        return;
       }
 
       const appointmentAt = parseAppointment(jobForm.appointmentAt);
@@ -888,10 +1002,12 @@ function App() {
 
       const payload = {
         ...jobForm,
+        title,
         price,
         paidAmount,
         appointmentAt
       };
+      setLoading(true);
       const response = editingJobId
         ? await api.updateJob(apiUrl, token, editingJobId, payload)
         : await api.createJob(apiUrl, token, payload);
@@ -1001,27 +1117,15 @@ function App() {
               onChange={setEntryMode}
             />
             {message ? <Message text={message} /> : null}
-            <Pressable
-              style={styles.connectionToggle}
-              onPress={() => setShowServerSettings((current) => !current)}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: showServerSettings }}
-            >
-              <View style={styles.connectionCopy}>
-                <Text style={styles.connectionTitle}>Bağlantı ayarları</Text>
-                <Text
-                  style={[
-                    styles.connectionValue,
-                    connectionState === "ready" && styles.connectionValueReady,
-                    connectionState === "offline" && styles.connectionValueOffline
-                  ]}
-                >
-                  {getConnectionLabel(apiUrl, connectionState)}
-                </Text>
-              </View>
-              <Text style={styles.connectionToggleText}>{showServerSettings ? "Kapat" : "Aç"}</Text>
-            </Pressable>
-            {showServerSettings ? (
+            {connectionState === "offline" ? (
+              <ConnectionNotice
+                isLocalNetwork={__DEV__ && isPrivateNetworkApiUrl(apiUrl)}
+                retrying={connectionRetrying}
+                onRetry={retryApiConnection}
+                onSettings={__DEV__ ? () => setShowServerSettings((current) => !current) : null}
+              />
+            ) : null}
+            {__DEV__ && showServerSettings ? (
               <ServerCard
                 apiUrlDraft={apiUrlDraft}
                 setApiUrlDraft={setApiUrlDraft}
@@ -1069,11 +1173,34 @@ function App() {
             <Text style={styles.appEyebrow}>Servis Defteri</Text>
             <Text style={styles.appTitle}>{getActiveTitle(activeTab)}</Text>
           </View>
-          <Pressable style={styles.headerButton} onPress={loadData}>
-            <Text style={styles.headerButtonText}>Yenile</Text>
+          <Pressable
+            style={[styles.headerButton, loading && styles.headerButtonDisabled]}
+            onPress={loadData}
+            disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Verileri yenile"
+          >
+            <RefreshCw size={20} color="#ffffff" strokeWidth={2.4} />
           </Pressable>
         </View>
         {message ? <Message text={message} compact /> : null}
+        {connectionState === "offline" ? (
+          <View style={styles.connectionBanner}>
+            <ConnectionNotice
+              isLocalNetwork={__DEV__ && isPrivateNetworkApiUrl(apiUrl)}
+              retrying={connectionRetrying}
+              onRetry={retryApiConnection}
+              onSettings={
+                __DEV__
+                  ? () => {
+                      setShowServerSettings(true);
+                      setActiveTab("settings");
+                    }
+                  : null
+              }
+            />
+          </View>
+        ) : null}
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentInner}
@@ -1183,6 +1310,7 @@ function App() {
             form={customerForm}
             setForm={setCustomerForm}
             editing={Boolean(editingCustomerId)}
+            busy={loading}
             onSubmit={saveCustomer}
             onReset={() => {
               setCustomerForm(initialCustomerForm);
@@ -1234,6 +1362,7 @@ function App() {
             setForm={setJobForm}
             customers={customers}
             editing={Boolean(editingJobId)}
+            busy={loading}
             onSubmit={saveJob}
             onAddCustomer={startNewCustomer}
             onReset={() => {
@@ -1311,13 +1440,28 @@ function App() {
           <Text style={styles.bodyText}>{user?.name || "Usta"}</Text>
           <Text style={styles.muted}>{user?.email}</Text>
         </Card>
-        <ServerCard
-          apiUrlDraft={apiUrlDraft}
-          setApiUrlDraft={setApiUrlDraft}
-          onSave={saveApiUrl}
-          onTest={testApiConnection}
-          detectedApiUrl={getSuggestedMobileApiUrl()}
-        />
+        {__DEV__ ? (
+          <View style={styles.stack}>
+            <Pressable
+              style={styles.developerToggle}
+              onPress={() => setShowServerSettings((current) => !current)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: showServerSettings }}
+            >
+              <Text style={styles.developerToggleText}>Geliştirici bağlantısı</Text>
+              <Text style={styles.developerToggleText}>{showServerSettings ? "Kapat" : "Aç"}</Text>
+            </Pressable>
+            {showServerSettings ? (
+              <ServerCard
+                apiUrlDraft={apiUrlDraft}
+                setApiUrlDraft={setApiUrlDraft}
+                onSave={saveApiUrl}
+                onTest={testApiConnection}
+                detectedApiUrl={getSuggestedMobileApiUrl()}
+              />
+            ) : null}
+          </View>
+        ) : null}
         <Pressable style={styles.dangerAction} onPress={clearSession}>
           <Text style={styles.dangerActionText}>Çıkış Yap</Text>
         </Pressable>
@@ -1370,6 +1514,23 @@ function HeaderBlock({ eyebrow, title, subtitle }) {
   );
 }
 
+function ConnectionNotice({ isLocalNetwork, retrying = false, onRetry, onSettings }) {
+  return (
+    <View style={styles.connectionNotice}>
+      <Text style={styles.connectionNoticeTitle}>Bağlantı kurulamadı</Text>
+      <Text style={styles.connectionNoticeText}>
+        {isLocalNetwork
+          ? "Telefon ve bilgisayar aynı Wi-Fi ağında olmalı. Bilgisayardaki API penceresini açık bırak."
+          : "İnternet bağlantısını kontrol edip yeniden dene."}
+      </Text>
+      <View style={styles.actionRow}>
+        <SmallButton title={retrying ? "Bağlanıyor..." : "Tekrar Dene"} onPress={onRetry} disabled={retrying} />
+        {onSettings ? <SmallButton title="Geliştirici Ayarı" onPress={onSettings} /> : null}
+      </View>
+    </View>
+  );
+}
+
 function ServerCard({ apiUrlDraft, setApiUrlDraft, onSave, onTest, detectedApiUrl }) {
   const normalizedDraft = normalizeApiUrlInput(apiUrlDraft);
   const canUseDetected = detectedApiUrl && detectedApiUrl !== normalizedDraft;
@@ -1377,8 +1538,9 @@ function ServerCard({ apiUrlDraft, setApiUrlDraft, onSave, onTest, detectedApiUr
 
   return (
     <Card>
+      <Text style={styles.cardTitle}>Geliştirici Sunucu Ayarı</Text>
       <Input
-        label="Sunucu"
+        label="API adresi"
         value={apiUrlDraft}
         onChangeText={setApiUrlDraft}
         placeholder="http://192.168.1.25:4000"
@@ -1472,7 +1634,7 @@ function StatsStrip({ customers, jobs, open, revenue }) {
   );
 }
 
-function CustomerForm({ form, setForm, editing, onSubmit, onReset }) {
+function CustomerForm({ form, setForm, editing, busy, onSubmit, onReset }) {
   return (
     <Card>
       <Text style={styles.cardTitle}>{editing ? "Müşteri Düzenle" : "Müşteri Ekle"}</Text>
@@ -1506,7 +1668,11 @@ function CustomerForm({ form, setForm, editing, onSubmit, onReset }) {
         placeholder="Müşteri notu"
         multiline
       />
-      <PrimaryButton title={editing ? "Müşteriyi Güncelle" : "Müşteri Kaydet"} onPress={onSubmit} />
+      <PrimaryButton
+        title={busy ? "Kaydediliyor..." : editing ? "Müşteriyi Güncelle" : "Müşteri Kaydet"}
+        onPress={onSubmit}
+        disabled={busy}
+      />
       {editing ? (
         <Pressable style={styles.secondaryAction} onPress={onReset}>
           <Text style={styles.secondaryActionText}>Vazgeç</Text>
@@ -1516,8 +1682,16 @@ function CustomerForm({ form, setForm, editing, onSubmit, onReset }) {
   );
 }
 
-function JobForm({ form, setForm, customers, editing, onSubmit, onReset, onAddCustomer }) {
+function JobForm({ form, setForm, customers, editing, busy, onSubmit, onReset, onAddCustomer }) {
+  const [customerQuery, setCustomerQuery] = useState("");
   const selectedCustomer = customers.find((customer) => customer.id === form.customerId);
+  const matchingCustomers = customers
+    .filter((customer) => matchesSearch([customer.name, customer.phone, customer.address], customerQuery))
+    .slice(0, 20);
+  const visibleCustomers =
+    selectedCustomer && !matchingCustomers.some((customer) => customer.id === selectedCustomer.id)
+      ? [selectedCustomer, ...matchingCustomers]
+      : matchingCustomers;
 
   if (customers.length === 0) {
     return (
@@ -1532,13 +1706,22 @@ function JobForm({ form, setForm, customers, editing, onSubmit, onReset, onAddCu
   return (
     <Card>
       <Text style={styles.cardTitle}>{editing ? "Talep Düzenle" : "Talep Oluştur"}</Text>
-      <Text style={styles.label}>Müşteri</Text>
+      <SearchInput
+        value={customerQuery}
+        onChangeText={setCustomerQuery}
+        placeholder="Müşteri adı, telefon veya adres"
+      />
+      <Text style={styles.pickerCount}>{visibleCustomers.length} müşteri</Text>
+      {visibleCustomers.length === 0 ? <Text style={styles.muted}>Müşteri bulunamadı.</Text> : null}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        {customers.map((customer) => (
+        {visibleCustomers.map((customer) => (
           <Pressable
             key={customer.id}
             style={[styles.choiceChip, form.customerId === customer.id && styles.choiceChipActive]}
-            onPress={() => setForm({ ...form, customerId: customer.id })}
+            onPress={() => {
+              setForm({ ...form, customerId: customer.id });
+              setCustomerQuery(customer.name);
+            }}
           >
             <Text style={[styles.choiceChipText, form.customerId === customer.id && styles.choiceChipTextActive]}>
               {customer.name}
@@ -1628,7 +1811,11 @@ function JobForm({ form, setForm, customers, editing, onSubmit, onReset, onAddCu
         />
       ) : null}
       <PhotoPicker photos={form.photos} onChange={(photos) => setForm({ ...form, photos })} />
-      <PrimaryButton title={editing ? "Talebi Güncelle" : "Talep Kaydet"} onPress={onSubmit} disabled={customers.length === 0} />
+      <PrimaryButton
+        title={busy ? "Kaydediliyor..." : editing ? "Talebi Güncelle" : "Talep Kaydet"}
+        onPress={onSubmit}
+        disabled={busy || customers.length === 0}
+      />
       {editing ? (
         <Pressable style={styles.secondaryAction} onPress={onReset}>
           <Text style={styles.secondaryActionText}>Vazgeç</Text>
@@ -1677,8 +1864,9 @@ function CustomerList({ customers, onJob, onEdit, onDelete }) {
       {customers.map((customer) => (
         <Card key={customer.id}>
           <Text style={styles.cardTitle}>{customer.name}</Text>
-          <Text style={styles.bodyText}>{customer.phone || "Telefon yok"}</Text>
+          <Text style={styles.bodyText}>{customer.phone ? formatPhone(customer.phone) : "Telefon yok"}</Text>
           <Text style={styles.muted}>{customer.address || "Adres yok"}</Text>
+          <Text style={styles.customerCount}>{customer._count?.jobs || 0} talep</Text>
           <ContactActions phone={customer.phone} address={customer.address} />
           <View style={styles.actionRow}>
             <SmallButton title="Talep Aç" onPress={() => onJob(customer)} />
@@ -1727,8 +1915,11 @@ function JobList({ jobs, emptyText, onEdit, onStart, onComplete, onCancel, onPai
               {job.requestCode ? <Badge text={job.requestCode} /> : null}
             </View>
             <Text style={styles.bodyText}>{job.customer?.name || "Müşteri yok"}</Text>
-            {job.customer?.phone ? <Text style={styles.muted}>Tel: {job.customer.phone}</Text> : null}
+            {job.customer?.phone ? <Text style={styles.muted}>Tel: {formatPhone(job.customer.phone)}</Text> : null}
             {job.customer?.address ? <Text style={styles.muted}>Adres: {job.customer.address}</Text> : null}
+            {job.description ? (
+              <Text style={styles.jobDescription} numberOfLines={3}>{job.description}</Text>
+            ) : null}
             <ContactActions phone={job.customer?.phone} address={job.customer?.address} />
             <Text style={styles.muted}>
               {(productCategoryLabels[job.productCategory] || "Diğer") +
@@ -1752,7 +1943,7 @@ function JobList({ jobs, emptyText, onEdit, onStart, onComplete, onCancel, onPai
               <SmallButton title="Düzenle" onPress={() => onEdit(job)} />
               {job.requestCode ? <SmallButton title="Kod Paylaş" onPress={() => shareRequestCode(job)} /> : null}
               <SmallButton
-                title="İncele"
+                title="İşe Başla"
                 onPress={() => onStart(job)}
                 disabled={job.status !== "pending"}
               />
@@ -1783,24 +1974,33 @@ function JobList({ jobs, emptyText, onEdit, onStart, onComplete, onCancel, onPai
 
 function BottomNav({ activeTab, onChange }) {
   const tabs = [
-    { value: "today", label: "Bugün" },
-    { value: "customers", label: "Müşteri" },
-    { value: "jobs", label: "Talep" },
-    { value: "search", label: "Ara" },
-    { value: "settings", label: "Ayar" }
+    { value: "today", label: "Bugün", icon: CalendarDays },
+    { value: "customers", label: "Müşteri", icon: Users },
+    { value: "jobs", label: "Talep", icon: ClipboardList },
+    { value: "search", label: "Ara", icon: SearchIcon },
+    { value: "settings", label: "Ayarlar", icon: SettingsIcon }
   ];
 
   return (
     <View style={styles.bottomNav}>
-      {tabs.map((tab) => (
-        <Pressable
-          key={tab.value}
-          style={[styles.navItem, activeTab === tab.value && styles.navItemActive]}
-          onPress={() => onChange(tab.value)}
-        >
-          <Text style={[styles.navText, activeTab === tab.value && styles.navTextActive]}>{tab.label}</Text>
-        </Pressable>
-      ))}
+      {tabs.map((tab) => {
+        const active = activeTab === tab.value;
+        const Icon = tab.icon;
+
+        return (
+          <Pressable
+            key={tab.value}
+            style={[styles.navItem, active && styles.navItemActive]}
+            onPress={() => onChange(tab.value)}
+            accessibilityRole="button"
+            accessibilityLabel={tab.label}
+            accessibilityState={{ selected: active }}
+          >
+            <Icon size={20} color={active ? "#0f766e" : "#cbd5e1"} strokeWidth={2.3} />
+            <Text style={[styles.navText, active && styles.navTextActive]}>{tab.label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -1850,41 +2050,42 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: 8
   },
-  connectionToggle: {
-    minHeight: 58,
+  connectionNotice: {
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: "#fff1f2"
+  },
+  connectionBanner: {
+    paddingHorizontal: 14,
+    paddingTop: 12
+  },
+  connectionNoticeTitle: {
+    color: "#991b1b",
+    fontSize: 14,
+    fontWeight: "900"
+  },
+  connectionNoticeText: {
+    color: "#7f1d1d",
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "700"
+  },
+  developerToggle: {
+    minHeight: 44,
     borderWidth: 1,
     borderColor: "#cbd5e1",
     borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
     backgroundColor: "#ffffff",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12
+    justifyContent: "space-between"
   },
-  connectionCopy: {
-    flex: 1,
-    gap: 2
-  },
-  connectionTitle: {
-    color: "#334155",
-    fontSize: 13,
-    fontWeight: "900"
-  },
-  connectionValue: {
-    color: "#64748b",
-    fontSize: 12,
-    fontWeight: "700"
-  },
-  connectionValueReady: {
-    color: "#0f766e"
-  },
-  connectionValueOffline: {
-    color: "#b91c1c"
-  },
-  connectionToggleText: {
-    color: "#0f766e",
+  developerToggleText: {
+    color: "#475569",
     fontSize: 13,
     fontWeight: "900"
   },
@@ -1914,16 +2115,15 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   headerButton: {
-    minHeight: 38,
-    paddingHorizontal: 14,
+    width: 40,
+    height: 40,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#0f766e"
   },
-  headerButtonText: {
-    color: "#ffffff",
-    fontWeight: "900"
+  headerButtonDisabled: {
+    opacity: 0.55
   },
   content: {
     flex: 1
@@ -1934,7 +2134,8 @@ const styles = StyleSheet.create({
   },
   stack: {
     gap: 12
-  },  cardTitle: {
+  },
+  cardTitle: {
     color: "#111827",
     fontSize: 17,
     fontWeight: "900"
@@ -1948,7 +2149,8 @@ const styles = StyleSheet.create({
     color: "#334155",
     fontSize: 14,
     fontWeight: "700"
-  },  muted: {
+  },
+  muted: {
     color: "#64748b",
     fontSize: 13,
     fontWeight: "700"
@@ -1957,7 +2159,8 @@ const styles = StyleSheet.create({
     color: "#475569",
     fontSize: 13,
     fontWeight: "900"
-  },  input: {
+  },
+  input: {
     minHeight: 46,
     borderWidth: 1,
     borderColor: "#cbd5e1",
@@ -1967,13 +2170,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     fontSize: 15,
     fontWeight: "700"
-  },  primaryAction: {
+  },
+  primaryAction: {
     minHeight: 48,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#0f766e"
-  },  secondaryAction: {
+  },
+  secondaryAction: {
     minHeight: 44,
     borderRadius: 8,
     alignItems: "center",
@@ -1994,13 +2199,15 @@ const styles = StyleSheet.create({
   dangerActionText: {
     color: "#991b1b",
     fontWeight: "900"
-  },  message: {
+  },
+  message: {
     borderWidth: 1,
     borderColor: "#99f6e4",
     borderRadius: 8,
     padding: 12,
     backgroundColor: "#ecfdf5"
-  },  messageText: {
+  },
+  messageText: {
     color: "#115e59",
     fontWeight: "800"
   },
@@ -2128,61 +2335,75 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontSize: 11,
     fontWeight: "800"
-  },  statusStep: {
+  },
+  statusStep: {
     flex: 1,
     minHeight: 30,
     borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#e2e8f0"
-  },  statusStepDanger: {
+  },
+  statusStepDanger: {
     backgroundColor: "#fee2e2"
-  },  statusStepTextActive: {
+  },
+  statusStepTextActive: {
     color: "#ffffff"
-  },  badge: {
+  },
+  badge: {
     minHeight: 26,
     borderRadius: 6,
     paddingHorizontal: 9,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ccfbf1"
-  },  badgeText: {
+  },
+  badgeText: {
     color: "#115e59",
     fontSize: 12,
     fontWeight: "900"
-  },  actionRow: {
+  },
+  actionRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8
-  },  photoGrid: {
+  },
+  photoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8
-  },  photoImage: {
+  },
+  photoImage: {
     width: "100%",
     height: "100%"
-  },  photoRemoveText: {
+  },
+  photoRemoveText: {
     color: "#ffffff",
     fontSize: 11,
     fontWeight: "900"
-  },  photoStripButton: {
+  },
+  photoStripButton: {
     borderRadius: 8,
     overflow: "hidden"
-  },  photoModal: {
+  },
+  photoModal: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 18,
     backgroundColor: "rgba(15,23,42,0.88)"
-  },  photoModalContent: {
+  },
+  photoModalContent: {
     width: "100%",
     maxHeight: "88%",
     gap: 12,
     alignItems: "center"
-  },  photoModalTitle: {
+  },
+  photoModalTitle: {
     color: "#ffffff",
     fontWeight: "900"
-  },  photoModalCloseText: {
+  },
+  photoModalCloseText: {
     color: "#0f766e",
     fontWeight: "900"
   },
@@ -2205,18 +2426,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ccfbf1"
-  },  smallButtonText: {
+  },
+  smallButtonText: {
     color: "#0f766e",
     fontSize: 13,
     fontWeight: "900"
-  },  emptyState: {
+  },
+  emptyState: {
     borderWidth: 1,
     borderStyle: "dashed",
     borderColor: "#cbd5e1",
     borderRadius: 8,
     padding: 16,
     backgroundColor: "#ffffff"
-  },  bottomNav: {
+  },
+  bottomNav: {
     position: "absolute",
     right: 0,
     bottom: 0,
@@ -2233,21 +2457,37 @@ const styles = StyleSheet.create({
   },
   navItem: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 48,
     borderRadius: 8,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    gap: 3
   },
   navItemActive: {
-    backgroundColor: "#ffffff"
+    backgroundColor: "#f0fdfa"
   },
   navText: {
     color: "#cbd5e1",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "900"
   },
   navTextActive: {
-    color: "#111827"
+    color: "#0f766e"
+  },
+  pickerCount: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  customerCount: {
+    color: "#0f766e",
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  jobDescription: {
+    color: "#334155",
+    fontSize: 14,
+    lineHeight: 20
   }
 });
 

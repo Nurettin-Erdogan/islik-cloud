@@ -1,6 +1,15 @@
-export const DEFAULT_API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4000";
+export const CLOUD_API_URL = "https://islik-cloud-api.onrender.com";
+export const DEFAULT_API_URL = process.env.EXPO_PUBLIC_API_URL || CLOUD_API_URL;
+export const PREFER_LAN_API = process.env.EXPO_PUBLIC_USE_LAN_API === "true";
 
 const REQUEST_TIMEOUT_MS = 75000;
+const LOCAL_REQUEST_TIMEOUT_MS = 15000;
+
+function isLocalNetworkUrl(value) {
+  return /\/\/(localhost|127\.0\.0\.1|\[?::1\]?|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|169\.254(?:\.\d{1,3}){2})(?::|\/|$)/i.test(
+    String(value || "")
+  );
+}
 
 function trimSlash(value) {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -8,7 +17,8 @@ function trimSlash(value) {
 
 export async function request(apiUrl, token, path, options = {}) {
   const baseUrl = trimSlash(apiUrl || DEFAULT_API_URL);
-  const { timeoutMs = REQUEST_TIMEOUT_MS, ...requestOptions } = options;
+  const defaultTimeoutMs = isLocalNetworkUrl(baseUrl) ? LOCAL_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+  const { timeoutMs = defaultTimeoutMs, ...requestOptions } = options;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const headers = {
@@ -59,8 +69,8 @@ export async function request(apiUrl, token, path, options = {}) {
 }
 
 export const api = {
-  health(apiUrl) {
-    return request(apiUrl, null, "/health");
+  health(apiUrl, timeoutMs = 75000) {
+    return request(apiUrl, null, "/health", { timeoutMs });
   },
   login(apiUrl, payload) {
     return request(apiUrl, null, "/api/auth/login", {

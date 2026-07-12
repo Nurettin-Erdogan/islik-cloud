@@ -2,15 +2,31 @@
 
 Expo ile yazilmis gercek mobil uygulamadir. Mevcut Express API'yi kullanir.
 
-## Yerel Calistirma
+## En Kolay Calistirma
+
+Proje ana klasorundeki `Servis Defteri Mobil Baslat.cmd` dosyasina cift tikla. Baslatici baglantiyi otomatik secer:
+
+- Docker ve PostgreSQL hazirsa hizli yerel API'yi ve bilgisayarin dogru Wi-Fi adresini kullanir.
+- Yerel veritabani kapaliysa calisan bulut API'ye gecer.
+- API hazir olmadan yerel QR akisini baslatmaz.
+- Metro onbellegini korur; sonraki QR acilislari daha hizli olur.
+
+Telefon ve bilgisayar yerel baglanti kullanilirken ayni Wi-Fi aginda olmalidir. Normal kullanimda uygulamaya sunucu adresi yazmak gerekmez.
+
+## QR ve Gunluk Kullanim
+
+Expo QR kodu gelistirme ve hizli test icindir; ilk acilista Metro, iPhone icin JavaScript bundle hazirlar. Gunluk kullanimda `releases` klasorundeki APK'yi kurmak daha hizli ve daha kararlidir. Yeni final surum `1.1.0` olarak paketlenir.
+
+## Elle Calistirma
+
+`apps/mobile` klasorunde:
 
 ```bash
-cd apps/mobile
 npm install
-npm start
+npm start -- --lan
 ```
 
-Masaustundeki `Servis Defteri Mobil Baslat.cmd` dosyasi API ve Expo'yu birlikte baslatir. Fiziksel telefonda `localhost` yerine bilgisayarin Wi-Fi IP adresi kullanilir.
+Bu yolda `.env.local` yoksa veya yerel adres verilmediyse bulut API kullanilir.
 
 ## Kontroller
 
@@ -46,4 +62,4 @@ iOS production paketi:
 npm run build:ios
 ```
 
-Preview ve production paketleri varsayilan olarak `https://islik-cloud-api.onrender.com` API adresini kullanir. Yerel Expo Go gelistirmesinde `.env.local` veya baslatma dosyasinin verdigi LAN adresi kullanilir.
+Preview ve production paketleri varsayilan olarak `https://islik-cloud-api.onrender.com` API adresini kullanir.

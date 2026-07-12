@@ -83,7 +83,7 @@ Mobil uygulamada:
 - Müşteri ekleme/düzenleme/silme
 - Müşteri kartından doğrudan talep açma
 - Talep ekleme/düzenleme/tamamlama/ödendi işaretleme
-- Mobil uygulama içinden API sunucu adresi ayarlama
+- Otomatik yerel/bulut API seçimi ve tek dokunuşla yeniden bağlanma
 
 Çalıştırmak için:
 
@@ -93,7 +93,7 @@ npm install
 npm start
 ```
 
-Masaüstündeki `Servis Defteri Mobil Baslat.cmd` dosyası API'yi ve Expo uygulamasını birlikte başlatır. Fiziksel telefonda yerel geliştirme için bilgisayarın IP adresi kullanılır. EAS preview APK ve production AAB paketleri Render API adresine bağlanır.
+Masaüstündeki `Servis Defteri Mobil Baslat.cmd` dosyası bağlantıyı otomatik hazırlar. Docker ve PostgreSQL açıksa hızlı yerel API ile doğru fiziksel ağ adresini kullanır; yerel veritabanı yoksa bulut API'ye geçer. Kullanıcının sunucu adresi girmesi gerekmez. EAS preview APK ve production AAB paketleri Render API adresine bağlanır.
 
 ## Teknolojiler
 

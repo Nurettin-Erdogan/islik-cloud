@@ -10,7 +10,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://islik-cloud-api.onrender.com"
-      }
+      },
+      "autoIncrement": true
     },
     "production": {
       "autoIncrement": true,
