@@ -13,22 +13,28 @@ const { app } = require("../src/app");
 const { prisma } = require("../src/lib/prisma");
 
 async function assertSafeCleanupDatabase() {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Refusing to clean a production database.");
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error("Refusing to clean a database outside the test environment.");
   }
 
   const databaseUrl = process.env.DATABASE_URL || "";
-  const remoteDatabaseHints = ["render.com", "amazonaws.com", "neon.tech", "supabase.co", "railway.app"];
+  const parsedDatabaseUrl = new URL(databaseUrl);
+  const localHosts = new Set(["localhost", "127.0.0.1", "::1"]);
 
-  if (remoteDatabaseHints.some((hint) => databaseUrl.includes(hint))) {
-    throw new Error("Refusing to clean a remote database during tests.");
+  if (!localHosts.has(parsedDatabaseUrl.hostname)) {
+    throw new Error("Refusing to clean a non-local database during tests.");
   }
 
-  const rows = await prisma.$queryRaw`SELECT current_database() AS name`;
-  const databaseName = String(rows?.[0]?.name || "");
+  if (parsedDatabaseUrl.searchParams.get("schema") !== "islik_test") {
+    throw new Error("Refusing to clean a database outside the islik_test schema.");
+  }
 
-  if (!databaseName.includes("islik")) {
-    throw new Error("Refusing to clean an unexpected database: " + databaseName);
+  const rows = await prisma.$queryRaw`SELECT current_database() AS database_name, current_schema() AS schema_name`;
+  const databaseName = String(rows?.[0]?.database_name || "");
+  const schemaName = String(rows?.[0]?.schema_name || "");
+
+  if (!databaseName.includes("islik") || schemaName !== "islik_test") {
+    throw new Error("Refusing to clean an unexpected test database target.");
   }
 }
 
@@ -65,6 +71,16 @@ test("health endpoint returns ok", async () => {
   const response = await request(app).get("/health").expect(200);
 
   assert.equal(response.body.status, "ok");
+  assert.equal(response.body.service, "islik-cloud-api");
+  assert.equal(response.headers["x-powered-by"], undefined);
+  assert.equal(response.headers["cache-control"], "no-store");
+  assert.equal(response.headers["x-content-type-options"], "nosniff");
+});
+
+test("readiness endpoint confirms the database connection", async () => {
+  const response = await request(app).get("/ready").expect(200);
+
+  assert.equal(response.body.status, "ready");
   assert.equal(response.body.service, "islik-cloud-api");
 });
 
@@ -161,6 +177,8 @@ test("public request flow creates, tracks and lists customer requests", async ()
   assert.match(createdRequest.requestCode, /^SD-\d{6}$/);
   assert.equal(createdRequest.productCategory, "white_goods");
   assert.equal(createdRequest.customer.name, "Ayse Demir");
+  assert.equal(createdRequest.customer.phone, undefined);
+  assert.equal(createdRequest.customer.address, undefined);
   assert.equal(createdRequest.photos.length, 1);
   assert.equal(createdRequest.photos[0].name, "front.jpg");
   assert.equal(createdRequest.statusHistory.length, 1);
@@ -179,6 +197,13 @@ test("public request flow creates, tracks and lists customer requests", async ()
   assert.equal(trackResponse.body.data.photos.length, 1);
   assert.equal(trackResponse.body.data.statusHistory.length, 1);
   assert.equal(trackResponse.body.data.statusHistory[0].status, "pending");
+
+  await request(app)
+    .get("/api/public/requests/not-a-valid-code")
+    .query({
+      phone: "05551230000"
+    })
+    .expect(400);
 
   const jobsResponse = await request(app)
     .get("/api/jobs")
@@ -199,6 +224,106 @@ test("public request flow creates, tracks and lists customer requests", async ()
       description: "Telefon alaninda harf olmamali."
     })
     .expect(400);
+});
+
+test("auth register enforces production-safe credential limits", async () => {
+  await request(app)
+    .post("/api/auth/register")
+    .send({
+      email: "missing-name@example.com",
+      password: "secret123"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/auth/register")
+    .send({
+      name: "A",
+      email: "short-name@example.com",
+      password: "secret123"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/auth/register")
+    .send({
+      name: "Short Password",
+      email: "short-password@example.com",
+      password: "1234567"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/auth/register")
+    .send({
+      name: "Invalid Email",
+      email: "invalid-email",
+      password: "secret123"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/auth/register")
+    .send({
+      name: "A".repeat(81),
+      email: "long-name@example.com",
+      password: "secret123"
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/auth/register")
+    .send({
+      name: "Long Password",
+      email: "long-password@example.com",
+      password: "x".repeat(129)
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/auth/login")
+    .send({
+      email: "invalid-email",
+      password: "x".repeat(129)
+    })
+    .expect(401);
+});
+
+test("public request accepts three compressed photos larger than the old body limit", async () => {
+  await createAuthToken();
+
+  const compressedPhotoData = Buffer.alloc(400000, 1).toString("base64");
+  const photos = [1, 2, 3].map((number) => ({
+    id: "large-photo-" + number,
+    name: "photo-" + number + ".jpg",
+    type: "image/jpeg",
+    dataUrl: "data:image/jpeg;base64," + compressedPhotoData
+  }));
+
+  const response = await request(app)
+    .post("/api/public/requests")
+    .send({
+      name: "Foto Test",
+      phone: "05551230001",
+      productCategory: "electronics",
+      photos,
+      description: "Uc fotografin birlikte yuklenmesini test eder."
+    })
+    .expect(201);
+
+  assert.equal(response.body.data.photos.length, 3);
+});
+
+test("oversized JSON requests return a clear 413 response", async () => {
+  const response = await request(app)
+    .post("/api/auth/login")
+    .send({
+      email: "large@example.com",
+      password: "x".repeat(4 * 1024 * 1024 + 1000)
+    })
+    .expect(413);
+
+  assert.equal(response.body.error.message, "Request is too large. Add at most 3 compressed photos.");
 });
 
 test("customer CRUD flow works", async () => {
@@ -302,6 +427,25 @@ test("customer validation rejects numbers in names and letters in phone", async 
       phone: "phone-number"
     })
     .expect(400);
+
+  await request(app)
+    .post("/api/customers")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      name: "Uzun Not",
+      phone: "05551234567",
+      note: "N".repeat(1001)
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/customers")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      name: "Hatalı Adres",
+      address: 123
+    })
+    .expect(400);
 });
 
 test("job CRUD flow works", async () => {
@@ -403,6 +547,57 @@ test("job creation with missing customer returns 400", async () => {
     .expect(400);
 });
 
+test("editing a job keeps its unchanged historical appointment", async () => {
+  const token = await createAuthToken();
+  const customerResponse = await request(app)
+    .post("/api/customers")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      name: "Historical Customer"
+    })
+    .expect(201);
+
+  const createResponse = await request(app)
+    .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      customerId: customerResponse.body.data.id,
+      title: "Historical Job",
+      appointmentAt: "2030-01-01T10:00:00.000Z"
+    })
+    .expect(201);
+
+  const historicalAppointment = new Date("2020-01-01T10:00:00.000Z");
+  await prisma.job.update({
+    where: {
+      id: createResponse.body.data.id
+    },
+    data: {
+      appointmentAt: historicalAppointment
+    }
+  });
+
+  const updateResponse = await request(app)
+    .put("/api/jobs/" + createResponse.body.data.id)
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      title: "Historical Job Updated",
+      appointmentAt: historicalAppointment.toISOString()
+    })
+    .expect(200);
+
+  assert.equal(updateResponse.body.data.title, "Historical Job Updated");
+  assert.equal(updateResponse.body.data.appointmentAt, historicalAppointment.toISOString());
+
+  await request(app)
+    .put("/api/jobs/" + createResponse.body.data.id)
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      appointmentAt: "2021-01-01T10:00:00.000Z"
+    })
+    .expect(400);
+});
+
 test("job validation rejects invalid fields", async () => {
   const token = await createAuthToken();
 
@@ -486,6 +681,25 @@ test("job validation rejects invalid fields", async () => {
       customerId,
       title: "Photos limit",
       photos: [testPhoto, testPhoto, testPhoto, testPhoto]
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      customerId,
+      title: "T".repeat(121)
+    })
+    .expect(400);
+
+  await request(app)
+    .post("/api/jobs")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      customerId,
+      title: "Extreme price",
+      price: 1000000001
     })
     .expect(400);
 

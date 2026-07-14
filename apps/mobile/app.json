@@ -2,7 +2,7 @@
   "expo": {
     "name": "Servis Defteri",
     "slug": "servis-defteri",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon-v2.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.nurettin.servisdefteri",
-      "buildNumber": "1"
+      "buildNumber": "2"
     },
     "android": {
       "package": "com.nurettin.servisdefteri",
@@ -48,7 +48,8 @@
           "photosPermission": "Servis talebine fotoğraf eklemek için galeri izni kullanılır.",
           "cameraPermission": "Arıza fotoğrafı çekmek için kamera izni kullanılır."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "description": "Müşteri servis taleplerini, randevuları ve ödemeleri tek yerden yönetin.",
     "owner": "nuribaba"

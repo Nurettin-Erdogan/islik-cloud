@@ -31,6 +31,10 @@ function JobForm({
   const remainingAmount = Math.max(price - paidAmount, 0);
   const shouldShowRemainingAmount =
     form.paymentStatus === "partial" && price > 0 && paidAmount > 0;
+  const appointmentMin =
+    editingJobId && form.appointmentAt && form.appointmentAt < minAppointmentAt
+      ? form.appointmentAt
+      : minAppointmentAt;
 
   return (
     <form className="panel" onSubmit={onSubmit}>
@@ -76,6 +80,7 @@ function JobForm({
             value={form.productBrand}
             onChange={onChange}
             placeholder="Arçelik"
+            maxLength={80}
           />
         </label>
 
@@ -86,6 +91,7 @@ function JobForm({
             value={form.productModel}
             onChange={onChange}
             placeholder="Opsiyonel"
+            maxLength={80}
           />
         </label>
       </div>
@@ -97,6 +103,7 @@ function JobForm({
           value={form.title}
           onChange={onChange}
           placeholder="Klima soğutmuyor"
+          maxLength={120}
           required
         />
       </label>
@@ -108,6 +115,7 @@ function JobForm({
           value={form.description}
           onChange={onChange}
           placeholder="Müşterinin belirttiği sorun ve ilk notlar"
+          maxLength={2000}
         />
       </label>
 
@@ -117,6 +125,7 @@ function JobForm({
           name="price"
           type="number"
           min="0"
+          max="1000000000"
           step="0.01"
           value={form.price}
           onChange={onChange}
@@ -149,7 +158,7 @@ function JobForm({
         <input
           name="appointmentAt"
           type="datetime-local"
-          min={minAppointmentAt}
+          min={appointmentMin}
           value={form.appointmentAt}
           onChange={onChange}
         />
@@ -175,7 +184,7 @@ function JobForm({
             name="paidAmount"
             type="number"
             min="0"
-            max={form.price || undefined}
+            max={form.price || 1000000000}
             step="0.01"
             value={form.paidAmount}
             onChange={onChange}

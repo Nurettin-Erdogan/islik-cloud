@@ -80,6 +80,7 @@ function RequestForm({ form, setForm, busy, onSubmit }) {
         autoCapitalize="words"
         textContentType="name"
         returnKeyType="next"
+        maxLength={80}
       />
       <Input
         label="Telefon"
@@ -99,6 +100,7 @@ function RequestForm({ form, setForm, busy, onSubmit }) {
         autoCapitalize="words"
         textContentType="fullStreetAddress"
         returnKeyType="next"
+        maxLength={250}
       />
       <Text style={styles.label}>Ürün</Text>
       <SegmentedControl
@@ -114,6 +116,7 @@ function RequestForm({ form, setForm, busy, onSubmit }) {
           placeholder="Arçelik"
           autoCapitalize="words"
           returnKeyType="next"
+          maxLength={80}
         />
         <Input
           label="Model"
@@ -122,6 +125,7 @@ function RequestForm({ form, setForm, busy, onSubmit }) {
           placeholder="Opsiyonel"
           autoCapitalize="characters"
           returnKeyType="next"
+          maxLength={80}
         />
       </View>
       <Input
@@ -130,7 +134,7 @@ function RequestForm({ form, setForm, busy, onSubmit }) {
         onChangeText={(value) => setForm({ ...form, description: value })}
         placeholder="Sorunu kısaca anlat"
         multiline
-        maxLength={1000}
+        maxLength={2000}
       />
       <PhotoPicker photos={form.photos} onChange={(photos) => setForm({ ...form, photos })} />
       <PrimaryButton title={busy ? "Gönderiliyor..." : "Talep Oluştur"} onPress={onSubmit} disabled={busy} />

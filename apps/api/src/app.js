@@ -4,10 +4,12 @@ const authRouter = require("./routes/auth");
 const customersRouter = require("./routes/customers");
 const jobsRouter = require("./routes/jobs");
 const publicRequestsRouter = require("./routes/publicRequests");
+const { prisma } = require("./lib/prisma");
 const { assertJwtSecret, requireAuth } = require("./middleware/auth");
 assertJwtSecret();
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
+app.disable("x-powered-by");
 app.set("trust proxy", 1);
 const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
@@ -26,6 +28,7 @@ const publicRequestRateLimitMax = normalizePositiveInteger(
   process.env.PUBLIC_REQUEST_RATE_LIMIT_MAX,
   60
 );
+const requestBodyLimit = "4mb";
 function normalizePositiveInteger(value, fallback) {
   const numberValue = Number(value);
   if (!Number.isInteger(numberValue) || numberValue <= 0) {
@@ -46,6 +49,13 @@ function createRateLimiter({ windowMs, max, message }) {
   const buckets = new Map();
   return (req, res, next) => {
     const now = Date.now();
+    if (buckets.size > 5000) {
+      for (const [bucketKey, storedBucket] of buckets.entries()) {
+        if (storedBucket.resetAt <= now) {
+          buckets.delete(bucketKey);
+        }
+      }
+    }
     const key = req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
     const bucket = buckets.get(key);
     if (!bucket || bucket.resetAt <= now) {
@@ -74,13 +84,19 @@ function securityHeaders(req, res, next) {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Cache-Control", "no-store");
+  if (isProduction) {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
   next();
 }
 function requestLogger(req, res, next) {
   const startedAt = Date.now();
+  const safePath = String(req.originalUrl || req.path || "").split("?")[0];
   res.on("finish", () => {
     const durationMs = Date.now() - startedAt;
-    console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs}ms`);
+    console.log(`${req.method} ${safePath} ${res.statusCode} ${durationMs}ms`);
   });
   next();
 }
@@ -97,21 +113,13 @@ app.use(
     }
   })
 );
-app.use(express.json({ limit: "1mb" }));
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    service: "islik-cloud-api"
-  });
-});
 app.use(
   "/api/public/requests",
   createRateLimiter({
     windowMs: publicRequestRateLimitWindowMs,
     max: publicRequestRateLimitMax,
     message: "Too many public request attempts. Please try again later."
-  }),
-  publicRequestsRouter
+  })
 );
 app.use(
   "/api/auth",
@@ -119,9 +127,32 @@ app.use(
     windowMs: authRateLimitWindowMs,
     max: authRateLimitMax,
     message: "Too many authentication attempts. Please try again later."
-  }),
-  authRouter
+  })
 );
+app.use(express.json({ limit: requestBodyLimit }));
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "islik-cloud-api"
+  });
+});
+app.get("/ready", async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: "ready",
+      service: "islik-cloud-api"
+    });
+  } catch {
+    res.status(503).json({
+      error: {
+        message: "Database is not ready."
+      }
+    });
+  }
+});
+app.use("/api/public/requests", publicRequestsRouter);
+app.use("/api/auth", authRouter);
 app.use("/api/customers", requireAuth, customersRouter);
 app.use("/api/jobs", requireAuth, jobsRouter);
 app.use((req, res) => {
@@ -132,6 +163,20 @@ app.use((req, res) => {
   });
 });
 app.use((error, req, res, next) => {
+  if (error.type === "entity.too.large") {
+    return res.status(413).json({
+      error: {
+        message: "Request is too large. Add at most 3 compressed photos."
+      }
+    });
+  }
+  if (error.type === "entity.parse.failed") {
+    return res.status(400).json({
+      error: {
+        message: "Request body must contain valid JSON."
+      }
+    });
+  }
   if (error.message === "Not allowed by CORS") {
     return res.status(403).json({
       error: {

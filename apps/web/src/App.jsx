@@ -9,6 +9,7 @@ import JobForm from "./components/JobForm";
 import InstallAppButton from "./components/InstallAppButton";
 import JobList from "./components/JobList";
 import StatsGrid from "./components/StatsGrid";
+import { downloadServiceCsv } from "./exportData";
 import {
   createCustomer,
   createJob,
@@ -80,6 +81,18 @@ function isPastAppointment(value) {
     return false;
   }
   return date < getCurrentMinute();
+}
+function isSameAppointment(firstValue, secondValue) {
+  if (!firstValue && !secondValue) {
+    return true;
+  }
+  const firstDate = new Date(firstValue);
+  const secondDate = new Date(secondValue);
+  return (
+    !Number.isNaN(firstDate.getTime()) &&
+    !Number.isNaN(secondDate.getTime()) &&
+    firstDate.getTime() === secondDate.getTime()
+  );
 }
 function toApiAppointment(value) {
   if (!value) {
@@ -328,6 +341,18 @@ function App() {
       window.history.pushState(null, "", `#${viewId}`);
     }
   }
+  function handleAppError(error) {
+    if (error?.status === 401) {
+      logout();
+      setAuthUser(null);
+      setCustomers([]);
+      setJobs([]);
+      setMessage("Oturum süresi doldu. Lütfen yeniden giriş yap.");
+      return;
+    }
+
+    setMessage(`Hata: ${error.message}`);
+  }
   useEffect(() => {
     function syncViewFromRoute() {
       setActiveView(getInitialActiveView());
@@ -393,7 +418,7 @@ function App() {
         setJobs(jobsResponse.data || []);
         setMessage("");
       } catch (error) {
-        setMessage(`Hata: ${error.message}`);
+        handleAppError(error);
       } finally {
         setLoading(false);
       }
@@ -542,12 +567,20 @@ function App() {
       }
       resetCustomerForm();
     } catch (error) {
-      setMessage(`Hata: ${error.message}`);
+      handleAppError(error);
     }
   }
   async function handleJobSubmit(event) {
     event.preventDefault();
-    if (isPastAppointment(jobForm.appointmentAt)) {
+    const existingJob = editingJobId
+      ? jobs.find((job) => job.id === editingJobId)
+      : null;
+    const apiAppointment = toApiAppointment(jobForm.appointmentAt);
+    const keepsExistingAppointment = Boolean(
+      existingJob && isSameAppointment(apiAppointment, existingJob.appointmentAt)
+    );
+
+    if (isPastAppointment(jobForm.appointmentAt) && !keepsExistingAppointment) {
       setMessage("Hata: Geçmiş tarihli randevu eklenemez.");
       return;
     }
@@ -578,7 +611,7 @@ function App() {
         ...jobForm,
         price,
         paidAmount,
-        appointmentAt: toApiAppointment(jobForm.appointmentAt)
+        appointmentAt: apiAppointment
       };
       if (editingJobId) {
         const response = await updateJob(editingJobId, payload);
@@ -591,7 +624,7 @@ function App() {
       }
       resetJobForm();
     } catch (error) {
-      setMessage(`Hata: ${error.message}`);
+      handleAppError(error);
     }
   }
   async function handleDeleteCustomer(customer) {
@@ -612,7 +645,7 @@ function App() {
       removeCustomerFromState(customer.id);
       setMessage("Müşteri silindi.");
     } catch (error) {
-      setMessage(`Hata: ${error.message}`);
+      handleAppError(error);
     }
   }
   async function handleDeleteJob(job) {
@@ -628,7 +661,7 @@ function App() {
       removeJobFromState(job.id);
       setMessage("Talep silindi.");
     } catch (error) {
-      setMessage(`Hata: ${error.message}`);
+      handleAppError(error);
     }
   }
   async function handleMarkJobCompleted(job) {
@@ -639,7 +672,7 @@ function App() {
       upsertJobInState(response.data);
       setMessage("Talep tamamlandı olarak işaretlendi.");
     } catch (error) {
-      setMessage(`Hata: ${error.message}`);
+      handleAppError(error);
     }
   }
   async function handleMarkJobPaid(job) {
@@ -651,7 +684,7 @@ function App() {
       upsertJobInState(response.data);
       setMessage("Ödeme ödendi olarak işaretlendi.");
     } catch (error) {
-      setMessage(`Hata: ${error.message}`);
+      handleAppError(error);
     }
   }
   function handleLogout() {
@@ -660,6 +693,10 @@ function App() {
     setCustomers([]);
     setJobs([]);
     setMessage("");
+  }
+  function handleExportData() {
+    downloadServiceCsv(customers, jobs);
+    setMessage("Müşteri ve talep yedeği CSV olarak indirildi.");
   }
   function renderOverviewPage() {
     return (
@@ -682,6 +719,9 @@ function App() {
           </button>
           <button type="button" onClick={() => openView("search")}>
             Talep Ara
+          </button>
+          <button type="button" onClick={handleExportData}>
+            CSV İndir
           </button>
         </section>
         <section className="workspace-grid">
@@ -883,12 +923,14 @@ function App() {
   if (authLoading) {
     return (
       <main className="loading-shell">
-        <p className="message">Oturum kontrol ediliyor...</p>
+        <p className="message" role="status" aria-live="polite">
+          Oturum kontrol ediliyor...
+        </p>
       </main>
     );
   }
   if (!authUser) {
-    return <AuthScreen onAuthSuccess={setAuthUser} />;
+    return <AuthScreen onAuthSuccess={setAuthUser} initialMessage={message} />;
   }
   return (
     <main className="app-shell">
@@ -930,8 +972,16 @@ function App() {
           <InstallAppButton className="mobile-install-button" />
         </header>
         <DashboardHeader eyebrow={currentPage.eyebrow} title={currentPage.title} />
-        {message ? <p className="message">{message}</p> : null}
-        {loading ? <p className="message">Veriler yükleniyor...</p> : null}
+        {message ? (
+          <p className="message" role="status" aria-live="polite">
+            {message}
+          </p>
+        ) : null}
+        {loading ? (
+          <p className="message" role="status" aria-live="polite">
+            Veriler yükleniyor...
+          </p>
+        ) : null}
         {renderActiveView()}
       </section>
     </main>

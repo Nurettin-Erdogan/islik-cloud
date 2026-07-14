@@ -29,15 +29,53 @@ function getAuthErrorMessage(error, mode) {
     return "Geçerli bir e-posta gir.";
   }
 
-  if (message === "Password must be at least 6 characters.") {
-    return "Şifre en az 6 karakter olmalı.";
+  if (message === "Password must be at least 8 characters.") {
+    return "Şifre en az 8 karakter olmalı.";
+  }
+
+  if (message === "Password must be at most 128 characters.") {
+    return "Şifre en fazla 128 karakter olabilir.";
   }
 
   if (message === "Name cannot contain numbers.") {
     return "Ad soyad alanında rakam kullanma.";
   }
 
+  if (message === "Name is required." || message === "Name must be at least 2 characters.") {
+    return "Ad soyad en az 2 karakter olmalı.";
+  }
+
   return message;
+}
+
+function getAuthValidationError(form, mode) {
+  const email = form.email.trim();
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return "Geçerli bir e-posta gir.";
+  }
+
+  if (email.length > 254) {
+    return "E-posta en fazla 254 karakter olabilir.";
+  }
+
+  if (mode === "register" && form.name.trim().length < 2) {
+    return "Ad soyad en az 2 karakter olmalı.";
+  }
+
+  if (mode === "register" && form.password.length < 8) {
+    return "Şifre en az 8 karakter olmalı.";
+  }
+
+  if (form.password.length > 128) {
+    return "Şifre en fazla 128 karakter olabilir.";
+  }
+
+  if (!form.password) {
+    return "Şifreni gir.";
+  }
+
+  return "";
 }
 
 function getInitialEntryMode() {
@@ -49,11 +87,11 @@ function getInitialEntryMode() {
   return entry === "technician" ? "technician" : "customer";
 }
 
-function AuthScreen({ onAuthSuccess }) {
+function AuthScreen({ onAuthSuccess, initialMessage = "" }) {
   const [entryMode, setEntryMode] = useState(getInitialEntryMode);
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState(initialForm);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(initialMessage);
   const [submitting, setSubmitting] = useState(false);
   const [warmupTakingLong, setWarmupTakingLong] = useState(false);
   const [slowSubmit, setSlowSubmit] = useState(false);
@@ -110,6 +148,19 @@ function AuthScreen({ onAuthSuccess }) {
       return;
     }
 
+    const validationError = getAuthValidationError(form, mode);
+
+    if (validationError) {
+      setMessage("Hata: " + validationError);
+      return;
+    }
+
+    const normalizedForm = {
+      ...form,
+      name: form.name.trim(),
+      email: form.email.trim().toLowerCase()
+    };
+
     const slowSubmitTimerId = setTimeout(() => {
       setSlowSubmit(true);
     }, SLOW_SUBMIT_DELAY_MS);
@@ -120,10 +171,10 @@ function AuthScreen({ onAuthSuccess }) {
 
       const response =
         mode === "register"
-          ? await register(form)
+          ? await register(normalizedForm)
           : await login({
-              email: form.email,
-              password: form.password
+              email: normalizedForm.email,
+              password: normalizedForm.password
             });
 
       setMessage("");
@@ -183,8 +234,16 @@ function AuthScreen({ onAuthSuccess }) {
             Gelen müşteri taleplerini, randevuları ve ödemeleri yönetmek için giriş yap.
           </p>
 
-          {message ? <p className="message">{message}</p> : null}
-          {helperMessage ? <p className="auth-hint">{helperMessage}</p> : null}
+          {message ? (
+            <p className="message" role="status" aria-live="polite">
+              {message}
+            </p>
+          ) : null}
+          {helperMessage ? (
+            <p className="auth-hint" role="status" aria-live="polite">
+              {helperMessage}
+            </p>
+          ) : null}
 
           <form className="auth-form" onSubmit={handleSubmit} onKeyDown={submitOnEnter}>
             {mode === "register" ? (
@@ -197,6 +256,9 @@ function AuthScreen({ onAuthSuccess }) {
                   placeholder="Ahmet Yılmaz"
                   autoComplete="name"
                   pattern="[^0-9]*"
+                  minLength={2}
+                  maxLength={80}
+                  required
                 />
               </label>
             ) : null}
@@ -211,6 +273,7 @@ function AuthScreen({ onAuthSuccess }) {
                 placeholder="ornek@mail.com"
                 autoComplete="email"
                 autoFocus
+                maxLength={254}
                 required
               />
             </label>
@@ -220,10 +283,11 @@ function AuthScreen({ onAuthSuccess }) {
               <input
                 name="password"
                 type="password"
-                minLength="6"
+                minLength={mode === "register" ? 8 : undefined}
+                maxLength={128}
                 value={form.password}
                 onChange={updateForm}
-                placeholder="En az 6 karakter"
+                placeholder={mode === "register" ? "En az 8 karakter" : "Şifren"}
                 autoComplete={mode === "register" ? "new-password" : "current-password"}
                 required
               />

@@ -15,7 +15,9 @@ Telefon ve bilgisayar yerel baglanti kullanilirken ayni Wi-Fi aginda olmalidir. 
 
 ## QR ve Gunluk Kullanim
 
-Expo QR kodu gelistirme ve hizli test icindir; ilk acilista Metro, iPhone icin JavaScript bundle hazirlar. Gunluk kullanimda `releases` klasorundeki APK'yi kurmak daha hizli ve daha kararlidir. Yeni final surum `1.1.0` olarak paketlenir.
+Expo QR kodu gelistirme ve hizli test icindir; ilk acilista Metro, iPhone icin JavaScript bundle hazirlar. Gunluk kullanimda `releases` klasorundeki APK'yi kurmak daha hizli ve daha kararlidir. Guncel uygulama surumu `1.2.0` olarak paketlenir.
+
+Oturum token'i iOS Keychain / Android Keystore destekli SecureStore icinde saklanir. Kamera ve galeri fotograflari API'ye gonderilmeden once cihazda otomatik kucultulur ve sikistirilir.
 
 ## Elle Calistirma
 
@@ -34,6 +36,7 @@ Bu yolda `.env.local` yoksa veya yerel adres verilmediyse bulut API kullanilir.
 npm run doctor
 npm run config:check
 npm run export:android
+npx expo export --platform ios
 ```
 
 ## APK ve AAB

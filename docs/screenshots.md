@@ -1,25 +1,25 @@
 # Screenshots
 
-Bu dosya Dükkan Defteri için portföy ve GitHub README ekran görüntüsü planını tutar.
+Bu dosya Servis Defteri için portföy ve GitHub README ekran görüntüsü planını tutar.
 
 ## Alınacak Ekran Görüntüleri
 
-1. Login ekranı
-2. Dashboard ekranı
-3. Müşteri listesi
-4. İş listesi
-5. Müşteri ve iş eklenmiş demo ekran
-6. GitHub README canlı linkler bölümü
+1. Mobil müşteri talep ekranı
+2. Mobil usta ana ekranı
+3. Mobil talep listesi ve ödeme görünümü
+4. Web müşteri talep ekranı
+5. Web usta paneli
+6. Fotoğraf ve takip kodu sonucu
 
 ## Önerilen Dosya Yolu
 
 ```text
-docs/images/01-login.png
-docs/images/02-dashboard.png
-docs/images/03-customers.png
-docs/images/04-jobs.png
-docs/images/05-demo-data.png
-docs/images/06-readme-links.png
+docs/images/01-mobile-customer.png
+docs/images/02-mobile-dashboard.png
+docs/images/03-mobile-jobs.png
+docs/images/04-web-customer.png
+docs/images/05-web-dashboard.png
+docs/images/06-request-result.png
 ```
 
 ## README İçin Önerilen Kullanım

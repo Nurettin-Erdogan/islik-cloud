@@ -29,6 +29,10 @@ function hasOwn(object, key) {
 const MAX_JOB_PHOTOS = 3;
 const MAX_PHOTO_DATA_URL_LENGTH = 950000;
 const PHOTO_DATA_URL_PATTERN = /^data:image\/(png|jpe?g|webp);base64,/i;
+const MAX_TITLE_LENGTH = 120;
+const MAX_DESCRIPTION_LENGTH = 2000;
+const MAX_PRODUCT_TEXT_LENGTH = 80;
+const MAX_MONEY_AMOUNT = 1000000000;
 
 function normalizePhotos(value) {
   if (value === undefined || value === null) {
@@ -75,7 +79,7 @@ function normalizePhotos(value) {
     photos.push({
       id:
         typeof item.id === "string" && item.id.trim()
-          ? item.id.trim()
+          ? item.id.trim().slice(0, 80)
           : "photo-" + Date.now() + "-" + index,
       name: typeof item.name === "string" && item.name.trim() ? item.name.trim().slice(0, 80) : "Fotoğraf",
       type: typeof item.type === "string" && item.type.trim() ? item.type.trim().slice(0, 50) : "image/jpeg",
@@ -92,7 +96,7 @@ function safePhotos(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function normalizeOptionalString(value, fieldName) {
+function normalizeOptionalString(value, fieldName, maxLength) {
   if (value === undefined) {
     return {
       value: undefined
@@ -109,14 +113,24 @@ function normalizeOptionalString(value, fieldName) {
     };
   }
   const trimmed = value.trim();
+  if (trimmed.length > maxLength) {
+    return {
+      error: fieldName + " must be at most " + maxLength + " characters."
+    };
+  }
   return {
     value: trimmed.length > 0 ? trimmed : null
   };
 }
-function normalizeRequiredString(value, fieldName, minLength = 1) {
+function normalizeRequiredString(value, fieldName, minLength = 1, maxLength = 2000) {
   if (typeof value !== "string" || value.trim().length < minLength) {
     return {
       error: fieldName + " is required."
+    };
+  }
+  if (value.trim().length > maxLength) {
+    return {
+      error: fieldName + " must be at most " + maxLength + " characters."
     };
   }
   return {
@@ -145,16 +159,16 @@ function normalizeNonNegativeNumber(value, fieldName, fallback) {
     };
   }
   const numberValue = Number(value);
-  if (!Number.isFinite(numberValue) || numberValue < 0) {
+  if (!Number.isFinite(numberValue) || numberValue < 0 || numberValue > MAX_MONEY_AMOUNT) {
     return {
-      error: fieldName + " must be a non-negative number."
+      error: fieldName + " must be between 0 and " + MAX_MONEY_AMOUNT + "."
     };
   }
   return {
-    value: numberValue
+    value: Math.round((numberValue + Number.EPSILON) * 100) / 100
   };
 }
-function normalizeDate(value) {
+function normalizeDate(value, allowedPastValue = null) {
   if (value === undefined) {
     return {
       value: undefined
@@ -173,7 +187,12 @@ function normalizeDate(value) {
   }
   const currentMinute = new Date();
   currentMinute.setSeconds(0, 0);
-  if (date < currentMinute) {
+  const allowedPastDate = allowedPastValue ? new Date(allowedPastValue) : null;
+  const isAllowedExistingDate =
+    allowedPastDate &&
+    !Number.isNaN(allowedPastDate.getTime()) &&
+    allowedPastDate.getTime() === date.getTime();
+  if (date < currentMinute && !isAllowedExistingDate) {
     return {
       error: "appointmentAt cannot be in the past."
     };
@@ -297,17 +316,17 @@ router.get("/", async (req, res, next) => {
 });
 router.post("/", async (req, res, next) => {
   try {
-    const customerId = normalizeRequiredString(req.body.customerId, "customerId");
-    const title = normalizeRequiredString(req.body.title, "title", 2);
-    const description = normalizeOptionalString(req.body.description, "description");
+    const customerId = normalizeRequiredString(req.body.customerId, "customerId", 1, 64);
+    const title = normalizeRequiredString(req.body.title, "title", 2, MAX_TITLE_LENGTH);
+    const description = normalizeOptionalString(req.body.description, "description", MAX_DESCRIPTION_LENGTH);
     const productCategory = normalizeEnum(
       req.body.productCategory,
       allowedProductCategories,
       "productCategory",
       "other"
     );
-    const productBrand = normalizeOptionalString(req.body.productBrand, "productBrand");
-    const productModel = normalizeOptionalString(req.body.productModel, "productModel");
+    const productBrand = normalizeOptionalString(req.body.productBrand, "productBrand", MAX_PRODUCT_TEXT_LENGTH);
+    const productModel = normalizeOptionalString(req.body.productModel, "productModel", MAX_PRODUCT_TEXT_LENGTH);
     const photos = normalizePhotos(req.body.photos);
     const status = normalizeEnum(req.body.status, allowedStatuses, "status", "pending");
     const priority = normalizeEnum(req.body.priority, allowedPriorities, "priority", "normal");
@@ -402,7 +421,7 @@ router.put("/:id", async (req, res, next) => {
     }
     const data = {};
     if (hasOwn(req.body, "customerId")) {
-      const customerId = normalizeRequiredString(req.body.customerId, "customerId");
+      const customerId = normalizeRequiredString(req.body.customerId, "customerId", 1, 64);
       if (customerId.error) {
         return validationError(res, customerId.error);
       }
@@ -413,14 +432,14 @@ router.put("/:id", async (req, res, next) => {
       data.customerId = customerId.value;
     }
     if (hasOwn(req.body, "title")) {
-      const title = normalizeRequiredString(req.body.title, "title", 2);
+      const title = normalizeRequiredString(req.body.title, "title", 2, MAX_TITLE_LENGTH);
       if (title.error) {
         return validationError(res, title.error);
       }
       data.title = title.value;
     }
     if (hasOwn(req.body, "description")) {
-      const description = normalizeOptionalString(req.body.description, "description");
+      const description = normalizeOptionalString(req.body.description, "description", MAX_DESCRIPTION_LENGTH);
       if (description.error) {
         return validationError(res, description.error);
       }
@@ -438,14 +457,14 @@ router.put("/:id", async (req, res, next) => {
       data.productCategory = productCategory.value;
     }
     if (hasOwn(req.body, "productBrand")) {
-      const productBrand = normalizeOptionalString(req.body.productBrand, "productBrand");
+      const productBrand = normalizeOptionalString(req.body.productBrand, "productBrand", MAX_PRODUCT_TEXT_LENGTH);
       if (productBrand.error) {
         return validationError(res, productBrand.error);
       }
       data.productBrand = productBrand.value;
     }
     if (hasOwn(req.body, "productModel")) {
-      const productModel = normalizeOptionalString(req.body.productModel, "productModel");
+      const productModel = normalizeOptionalString(req.body.productModel, "productModel", MAX_PRODUCT_TEXT_LENGTH);
       if (productModel.error) {
         return validationError(res, productModel.error);
       }
@@ -498,7 +517,7 @@ router.put("/:id", async (req, res, next) => {
       data.paidAmount = paidAmount.value;
     }
     if (hasOwn(req.body, "appointmentAt")) {
-      const appointmentAt = normalizeDate(req.body.appointmentAt);
+      const appointmentAt = normalizeDate(req.body.appointmentAt, existingJob.appointmentAt);
       if (appointmentAt.error) {
         return validationError(res, appointmentAt.error);
       }

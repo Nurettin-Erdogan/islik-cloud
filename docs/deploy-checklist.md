@@ -1,57 +1,55 @@
-# Deploy Checklist
+# Servis Defteri Yayın Kontrol Listesi
 
-Bu doküman Dükkan Defteri'ni deploy'a hazırlamak için takip edilecek kısa kontrol listesidir.
+## 1. API Ortamı
 
-## 1. Backend ortam değişkenleri
-
-Production ortamında backend için gerekli değişkenler:
+Render/API ortamında aşağıdaki değişkenleri kontrol et:
 
 ```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
-JWT_SECRET="strong-production-secret"
 NODE_ENV="production"
-CORS_ORIGIN="https://frontend-domain.example.com"
-```
-
-Opsiyonel auth rate limit ayarları:
-
-```env
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
+JWT_SECRET="en-az-32-byte-rastgele-production-secret"
+CORS_ORIGIN="https://islik-cloud.vercel.app"
+PUBLIC_SERVICE_OWNER_EMAIL="talep-alacak-usta@example.com"
 AUTH_RATE_LIMIT_WINDOW_MS="900000"
 AUTH_RATE_LIMIT_MAX="30"
+PUBLIC_REQUEST_RATE_LIMIT_WINDOW_MS="900000"
+PUBLIC_REQUEST_RATE_LIMIT_MAX="60"
 ```
 
-Not: `JWT_SECRET` güçlü ve tahmin edilemez olmalıdır. Repo içine gerçek secret yazılmamalıdır. Production ortamında `JWT_SECRET` boşsa API başlatılmamalıdır.
+- `JWT_SECRET` yerel secret ile aynı olmamalı ve repoda bulunmamalı.
+- `PUBLIC_SERVICE_OWNER_EMAIL` production veritabanında kayıtlı bir usta hesabı olmalı.
+- Birden fazla web origin gerekiyorsa `CORS_ORIGIN` virgülle ayrılmalı.
+- Yayından önce PostgreSQL yedeği veya sağlayıcı snapshot'ı alınmalı.
 
-`CORS_ORIGIN`, frontend'in production adresi olmalıdır. Birden fazla frontend adresi gerekiyorsa virgülle ayrılabilir. Production ortamında `CORS_ORIGIN` boş bırakılırsa tarayıcı origin'lerinden gelen istekler reddedilir.
-
-## 2. Frontend ortam değişkenleri
-
-Production frontend için API adresi ayarlanmalıdır:
-
-```env
-VITE_API_URL="https://api-domain.example.com"
-```
-
-## 3. Database migration
-
-Production deploy sırasında Prisma migration çalıştırılmalıdır:
-
-```bash
-cd apps/api
-npx prisma migrate deploy
-npx prisma generate
-```
-
-## 4. Backend build/test kontrolü
+## 2. API Kurulum ve Başlatma
 
 ```bash
 cd apps/api
 npm ci
+npx prisma generate
+npx prisma migrate deploy
 npm test
 npm start
 ```
 
-## 5. Frontend build kontrolü
+Kontroller:
+
+```http
+GET /health
+GET /ready
+```
+
+`/health` API işleminin, `/ready` ise veritabanı bağlantısının hazır olduğunu doğrular. İkisi de `200` dönmeden frontend yayınını tamamlanmış sayma.
+
+## 3. Web Ortamı
+
+Vercel ortam değişkeni:
+
+```env
+VITE_API_URL="https://islik-cloud-api.onrender.com"
+```
+
+Yerel üretim kontrolü:
 
 ```bash
 cd apps/web
@@ -60,46 +58,52 @@ npm run lint
 npm run build
 ```
 
-## 6. Health check
+## 4. Mobil Ortam ve Paket
 
-Backend deploy sonrası kontrol:
+EAS `preview` ve `production` profillerinde:
 
-```http
-GET /health
+```env
+EXPO_PUBLIC_API_URL="https://islik-cloud-api.onrender.com"
 ```
 
-Beklenen cevap:
+Kontrol ve paket komutları:
 
-```json
-{
-  "status": "ok",
-  "service": "islik-cloud-api"
-}
+```bash
+cd apps/mobile
+npm ci
+npm run doctor
+npx expo export --platform android
+npx expo export --platform ios
+npm run build:apk
 ```
 
-## 7. Manuel demo kontrolü
+- Android APK gerçek cihazda kurulmalı.
+- iOS Expo Go veya TestFlight üzerinde açılmalı.
+- Production uygulamasında geliştirici sunucu ayarı görünmemeli.
+- Kamera ve galeri izin metinleri doğru görünmeli.
 
-- Kullanıcı kayıt olabiliyor mu?
-- Kullanıcı giriş yapabiliyor mu?
-- Dashboard token yokken açılmıyor mu?
-- Müşteri ekleme çalışıyor mu?
-- İş ekleme çalışıyor mu?
-- İş önceliği ve randevu zamanı kaydedilip listede görünüyor mu?
-- Düzenleme, silme, filtreleme çalışıyor mu?
-- Başka kullanıcı başka veriyi göremiyor mu?
+## 5. Kabul Testi
 
-## 8. Deploy için sıradaki karar
+- Yeni usta kaydı ve mevcut hesap girişi çalışıyor.
+- Yanlış parola anlaşılır hata gösteriyor.
+- Müşteri talebi üç fotoğrafla oluşturulabiliyor.
+- Takip kodu ve telefonla talep görülebiliyor.
+- Public takip cevabı telefon ve adres döndürmüyor.
+- Usta talebi görüyor, durum ve randevu değiştirebiliyor.
+- Geçmiş tarihli yeni randevu engelleniyor.
+- Kısmi ödeme kaydoluyor ve kalan tutar doğru görünüyor.
+- Türkçe karakterli müşteri ve talep araması çalışıyor.
+- CSV dışa aktarma/paylaşma çalışıyor.
+- Başka usta hesabı diğer hesabın verisini göremiyor.
+- Oturum kapatma sonrası korumalı ekran açılamıyor.
 
-Önerilen basit başlangıç:
+Detaylı senaryolar `docs/manual-test-plan.txt` içindedir.
 
-- Frontend: Vercel veya Netlify
-- Backend: Render, Railway veya Fly.io
-- Database: Railway PostgreSQL, Render PostgreSQL veya Supabase PostgreSQL
+## 6. Yayın Sonrası
 
-İlk deploy için en kolay akış genelde:
-
-```text
-Frontend: Vercel
-Backend: Render
-Database: Render PostgreSQL veya Railway PostgreSQL
-```
+- GitHub Actions içindeki API, Web ve Mobile CI yeşil olmalı.
+- Vercel ve Render deploy loglarında hata olmamalı.
+- Canlı `/ready` çağrısı `200` dönmeli.
+- Vercel müşteri talebi ve usta giriş akışı canlı API ile denenmeli.
+- Yeni APK sürüm, paket adı ve bulut API adresi kontrol edilmeli.
+- Hata halinde son çalışan commit/deploy sürümüne dönülmeli; migration geri alınmadan önce veritabanı yedeği kullanılmalı.

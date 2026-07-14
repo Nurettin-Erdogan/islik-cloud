@@ -1,4 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import React, { useEffect, useMemo, useState } from "react";
 import CalendarDays from "lucide-react-native/icons/calendar-days";
 import ClipboardList from "lucide-react-native/icons/clipboard-list";
@@ -50,8 +52,9 @@ import {
   parseAppointment,
   stripDigits
 } from "./src/utils/format";
+import { buildServiceCsv } from "./src/utils/exportData";
+import { clearStoredToken, getStoredToken, setStoredToken } from "./src/utils/secureSession";
 
-const TOKEN_KEY = "servis_defteri_mobile_token";
 const USER_KEY = "servis_defteri_mobile_user";
 const API_URL_KEY = "servis_defteri_mobile_api_url";
 const CUSTOMERS_CACHE_KEY = "servis_defteri_mobile_customers";
@@ -295,6 +298,47 @@ function isPastAppointmentValue(value) {
   return date < currentMinute;
 }
 
+function isSameAppointmentValue(firstValue, secondValue) {
+  if (!firstValue && !secondValue) {
+    return true;
+  }
+
+  const firstDate = new Date(firstValue);
+  const secondDate = new Date(secondValue);
+  return (
+    !Number.isNaN(firstDate.getTime()) &&
+    !Number.isNaN(secondDate.getTime()) &&
+    firstDate.getTime() === secondDate.getTime()
+  );
+}
+
+function getAuthValidationError(form, mode) {
+  const email = String(form.email || "").trim().toLowerCase();
+  const password = String(form.password || "");
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return "Hata: Geçerli bir e-posta adresi gir.";
+  }
+
+  if (mode === "register" && stripDigits(form.name).trim().length < 2) {
+    return "Hata: Ad soyad en az 2 harf olmalı.";
+  }
+
+  if (mode === "register" && password.length < 8) {
+    return "Hata: Şifre en az 8 karakter olmalı.";
+  }
+
+  if (password.length > 128) {
+    return "Hata: Şifre en fazla 128 karakter olabilir.";
+  }
+
+  if (!password) {
+    return "Hata: Şifre gerekli.";
+  }
+
+  return "";
+}
+
 function getPortalRequestValidationError(form) {
   const name = stripDigits(form.name).trim();
   const phone = digitsOnly(form.phone);
@@ -308,7 +352,7 @@ function getPortalRequestValidationError(form) {
     return "Hata: Telefon en az 10 rakam olmalı.";
   }
 
-  if (description.length < 5) {
+  if (description.length < 10) {
     return "Hata: Arızayı birkaç kelimeyle anlat.";
   }
 
@@ -481,7 +525,7 @@ function App() {
       try {
         const [storedApiUrl, storedToken, storedUser, storedCustomers, storedJobs] = await Promise.all([
           AsyncStorage.getItem(API_URL_KEY),
-          AsyncStorage.getItem(TOKEN_KEY),
+          getStoredToken(),
           AsyncStorage.getItem(USER_KEY),
           AsyncStorage.getItem(CUSTOMERS_CACHE_KEY),
           AsyncStorage.getItem(JOBS_CACHE_KEY)
@@ -520,7 +564,10 @@ function App() {
             setCustomers(Array.isArray(cachedCustomers) ? cachedCustomers : []);
             setJobs(Array.isArray(cachedJobs) ? cachedJobs : []);
           } else {
-            await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY, CUSTOMERS_CACHE_KEY, JOBS_CACHE_KEY]);
+            await Promise.all([
+              clearStoredToken(),
+              AsyncStorage.multiRemove([USER_KEY, CUSTOMERS_CACHE_KEY, JOBS_CACHE_KEY])
+            ]);
           }
         }
       } finally {
@@ -636,7 +683,10 @@ function App() {
   }
 
   async function clearSession() {
-    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY, CUSTOMERS_CACHE_KEY, JOBS_CACHE_KEY]);
+    await Promise.all([
+      clearStoredToken(),
+      AsyncStorage.multiRemove([USER_KEY, CUSTOMERS_CACHE_KEY, JOBS_CACHE_KEY])
+    ]);
     setToken(null);
     setUser(null);
     setCustomers([]);
@@ -755,8 +805,10 @@ function App() {
   async function saveSession(response) {
     const nextToken = response.data.token;
     const nextUser = response.data.user;
-    await AsyncStorage.setItem(TOKEN_KEY, nextToken);
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+    await Promise.all([
+      setStoredToken(nextToken),
+      AsyncStorage.setItem(USER_KEY, JSON.stringify(nextUser))
+    ]);
     setToken(nextToken);
     setUser(nextUser);
     setConnectionState("ready");
@@ -764,13 +816,24 @@ function App() {
   }
 
   async function submitAuth() {
+    const validationError = getAuthValidationError(authForm, authMode);
+
+    if (validationError) {
+      setMessage(validationError);
+      return;
+    }
+
     try {
       setLoading(true);
       const response =
         authMode === "register"
-          ? await api.register(apiUrl, authForm)
+          ? await api.register(apiUrl, {
+              ...authForm,
+              name: stripDigits(authForm.name).trim(),
+              email: authForm.email.trim().toLowerCase()
+            })
           : await api.login(apiUrl, {
-              email: authForm.email,
+              email: authForm.email.trim().toLowerCase(),
               password: authForm.password
             });
       await saveSession(response);
@@ -994,8 +1057,11 @@ function App() {
       }
 
       const appointmentAt = parseAppointment(jobForm.appointmentAt);
+      const existingJob = editingJobId ? jobs.find((job) => job.id === editingJobId) : null;
+      const keepsExistingAppointment =
+        existingJob && isSameAppointmentValue(appointmentAt, existingJob.appointmentAt);
 
-      if (isPastAppointmentValue(appointmentAt)) {
+      if (isPastAppointmentValue(appointmentAt) && !keepsExistingAppointment) {
         setMessage("Hata: Geçmiş tarihli randevu eklenemez.");
         return;
       }
@@ -1439,6 +1505,7 @@ function App() {
           <Text style={styles.cardTitle}>Hesap</Text>
           <Text style={styles.bodyText}>{user?.name || "Usta"}</Text>
           <Text style={styles.muted}>{user?.email}</Text>
+          <SmallButton title="Verileri Paylaş" onPress={shareServiceData} />
         </Card>
         {__DEV__ ? (
           <View style={styles.stack}>
@@ -1468,6 +1535,31 @@ function App() {
       </View>
     );
   }
+
+  async function shareServiceData() {
+    try {
+      const csv = buildServiceCsv(customers, jobs);
+      const canShareFile = FileSystem.cacheDirectory && (await Sharing.isAvailableAsync());
+
+      if (canShareFile) {
+        const datePart = new Date().toISOString().slice(0, 10);
+        const fileUri = FileSystem.cacheDirectory + "servis-defteri-" + datePart + ".csv";
+        await FileSystem.writeAsStringAsync(fileUri, "\ufeff" + csv, {
+          encoding: FileSystem.EncodingType.UTF8
+        });
+        await Sharing.shareAsync(fileUri, {
+          mimeType: "text/csv",
+          UTI: "public.comma-separated-values-text",
+          dialogTitle: "Servis Defteri verilerini paylaş"
+        });
+        return;
+      }
+
+      await Share.share({ title: "Servis Defteri verileri", message: csv });
+    } catch {
+      Alert.alert("Paylaşılamadı", "Veri paylaşım ekranı açılamadı.");
+    }
+  }
 }
 
 function translateError(message) {
@@ -1484,11 +1576,16 @@ function translateError(message) {
   const map = {
     "Email is already registered.": "Bu e-posta zaten kayıtlı.",
     "Invalid email or password.": "E-posta veya şifre hatalı.",
-    "Password must be at least 6 characters.": "Şifre en az 6 karakter olmalı.",
+    "Password must be at least 8 characters.": "Şifre en az 8 karakter olmalı.",
+    "Password must be at most 128 characters.": "Şifre en fazla 128 karakter olabilir.",
+    "Name is required.": "Ad soyad en az 2 karakter olmalı.",
+    "Name must be at least 2 characters.": "Ad soyad en az 2 karakter olmalı.",
     "Name cannot contain numbers.": "Ad soyad alanında rakam kullanma.",
     "Customer name cannot contain numbers.": "Müşteri adında rakam kullanma.",
     "Phone must contain digits only.": "Telefon sadece rakam olmalı.",
-    "appointmentAt cannot be in the past.": "Geçmiş tarihli randevu eklenemez."
+    "appointmentAt cannot be in the past.": "Geçmiş tarihli randevu eklenemez.",
+    "Request is too large. Add at most 3 compressed photos.":
+      "Fotoğrafların toplam boyutu çok büyük. Daha küçük fotoğraflarla tekrar dene."
   };
   return map[message] || message;
 }
@@ -1580,6 +1677,7 @@ function AuthPanel({ authMode, setAuthMode, form, setForm, busy, onSubmit }) {
           value={form.name}
           onChangeText={(value) => setForm({ ...form, name: stripDigits(value) })}
           placeholder="Ahmet Yılmaz"
+          maxLength={80}
         />
       ) : null}
       <Input
@@ -1589,13 +1687,15 @@ function AuthPanel({ authMode, setAuthMode, form, setForm, busy, onSubmit }) {
         placeholder="ornek@mail.com"
         autoCapitalize="none"
         keyboardType="email-address"
+        maxLength={254}
       />
       <Input
         label="Şifre"
         value={form.password}
         onChangeText={(value) => setForm({ ...form, password: value })}
-        placeholder="En az 6 karakter"
+        placeholder={authMode === "register" ? "En az 8 karakter" : "Şifren"}
         secureTextEntry
+        maxLength={128}
       />
       <PrimaryButton
         title={busy ? "Kontrol ediliyor..." : authMode === "login" ? "Giriş Yap" : "Kayıt Ol"}
@@ -1645,6 +1745,7 @@ function CustomerForm({ form, setForm, editing, busy, onSubmit, onReset }) {
         placeholder="Ahmet Yılmaz"
         autoCapitalize="words"
         textContentType="name"
+        maxLength={80}
       />
       <Input
         label="Telefon"
@@ -1660,6 +1761,7 @@ function CustomerForm({ form, setForm, editing, busy, onSubmit, onReset }) {
         value={form.address}
         onChangeText={(value) => setForm({ ...form, address: value })}
         placeholder="İstanbul"
+        maxLength={250}
       />
       <Input
         label="Not"
@@ -1667,6 +1769,7 @@ function CustomerForm({ form, setForm, editing, busy, onSubmit, onReset }) {
         onChangeText={(value) => setForm({ ...form, note: value })}
         placeholder="Müşteri notu"
         multiline
+        maxLength={1000}
       />
       <PrimaryButton
         title={busy ? "Kaydediliyor..." : editing ? "Müşteriyi Güncelle" : "Müşteri Kaydet"}
@@ -1742,12 +1845,14 @@ function JobForm({ form, setForm, customers, editing, busy, onSubmit, onReset, o
           value={form.productBrand}
           onChangeText={(value) => setForm({ ...form, productBrand: value })}
           placeholder="Arçelik"
+          maxLength={80}
         />
         <Input
           label="Model"
           value={form.productModel}
           onChangeText={(value) => setForm({ ...form, productModel: value })}
           placeholder="Opsiyonel"
+          maxLength={80}
         />
       </View>
       <Input
@@ -1755,6 +1860,7 @@ function JobForm({ form, setForm, customers, editing, busy, onSubmit, onReset, o
         value={form.title}
         onChangeText={(value) => setForm({ ...form, title: value })}
         placeholder="Klima soğutmuyor"
+        maxLength={120}
       />
       <Input
         label="Arıza Açıklaması"
@@ -1762,6 +1868,7 @@ function JobForm({ form, setForm, customers, editing, busy, onSubmit, onReset, o
         onChangeText={(value) => setForm({ ...form, description: value })}
         placeholder="İlk notlar"
         multiline
+        maxLength={2000}
       />
       <Input
         label="Randevu"
@@ -1769,6 +1876,7 @@ function JobForm({ form, setForm, customers, editing, busy, onSubmit, onReset, o
         onChangeText={(value) => setForm({ ...form, appointmentAt: value })}
         placeholder="2026-07-04 14:30"
         autoCapitalize="none"
+        maxLength={16}
       />
       <QuickAppointmentPicker
         onChange={(appointmentAt) => setForm({ ...form, appointmentAt })}
@@ -1779,6 +1887,7 @@ function JobForm({ form, setForm, customers, editing, busy, onSubmit, onReset, o
         onChangeText={(value) => setForm({ ...form, price: digitsOnly(value) })}
         placeholder="1200"
         keyboardType="number-pad"
+        maxLength={12}
       />
       <Text style={styles.label}>Durum</Text>
       <SegmentedControl
@@ -1808,6 +1917,7 @@ function JobForm({ form, setForm, customers, editing, busy, onSubmit, onReset, o
           onChangeText={(value) => setForm({ ...form, paidAmount: digitsOnly(value) })}
           placeholder="500"
           keyboardType="number-pad"
+          maxLength={12}
         />
       ) : null}
       <PhotoPicker photos={form.photos} onChange={(photos) => setForm({ ...form, photos })} />

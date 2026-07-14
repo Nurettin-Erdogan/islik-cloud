@@ -2,18 +2,45 @@ const express = require("express");
 const { prisma } = require("../lib/prisma");
 
 const router = express.Router();
+const MAX_CUSTOMER_NAME_LENGTH = 80;
+const MAX_PHONE_LENGTH = 15;
+const MAX_ADDRESS_LENGTH = 250;
+const MAX_NOTE_LENGTH = 1000;
 
 function hasDigit(value) {
   return /\d/.test(value);
 }
 
-function normalizeOptionalString(value) {
+function normalizeOptionalString(value, fieldName, maxLength) {
+  if (value === undefined) {
+    return {
+      value: undefined
+    };
+  }
+
+  if (value === null || value === "") {
+    return {
+      value: null
+    };
+  }
+
   if (typeof value !== "string") {
-    return undefined;
+    return {
+      error: fieldName + " must be a string."
+    };
   }
 
   const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+
+  if (trimmed.length > maxLength) {
+    return {
+      error: fieldName + " must be at most " + maxLength + " characters."
+    };
+  }
+
+  return {
+    value: trimmed.length > 0 ? trimmed : null
+  };
 }
 
 function normalizeCustomerName(value) {
@@ -28,6 +55,12 @@ function normalizeCustomerName(value) {
   if (hasDigit(trimmed)) {
     return {
       error: "Customer name cannot contain numbers."
+    };
+  }
+
+  if (trimmed.length > MAX_CUSTOMER_NAME_LENGTH) {
+    return {
+      error: "Customer name must be at most 80 characters."
     };
   }
 
@@ -60,6 +93,12 @@ function normalizePhone(value) {
   if (!/^\d+$/.test(trimmed)) {
     return {
       error: "Phone must contain digits only."
+    };
+  }
+
+  if (trimmed.length < 10 || trimmed.length > MAX_PHONE_LENGTH) {
+    return {
+      error: "Phone must contain between 10 and 15 digits."
     };
   }
 
@@ -107,8 +146,10 @@ router.post("/", async (req, res, next) => {
     const { name, phone, address, note } = req.body;
     const customerName = normalizeCustomerName(name);
     const customerPhone = normalizePhone(phone);
+    const customerAddress = normalizeOptionalString(address, "Address", MAX_ADDRESS_LENGTH);
+    const customerNote = normalizeOptionalString(note, "Note", MAX_NOTE_LENGTH);
 
-    const error = customerName.error || customerPhone.error;
+    const error = customerName.error || customerPhone.error || customerAddress.error || customerNote.error;
 
     if (error) {
       return validationError(res, error);
@@ -119,8 +160,8 @@ router.post("/", async (req, res, next) => {
         userId: req.user.id,
         name: customerName.value,
         phone: customerPhone.value,
-        address: normalizeOptionalString(address),
-        note: normalizeOptionalString(note)
+        address: customerAddress.value,
+        note: customerNote.value
       }
     });
 
@@ -168,6 +209,12 @@ router.put("/:id", async (req, res, next) => {
   try {
     const { name, phone, address, note } = req.body;
     const data = {};
+    const customerAddress = normalizeOptionalString(address, "Address", MAX_ADDRESS_LENGTH);
+    const customerNote = normalizeOptionalString(note, "Note", MAX_NOTE_LENGTH);
+
+    if (customerAddress.error || customerNote.error) {
+      return validationError(res, customerAddress.error || customerNote.error);
+    }
 
     if (name !== undefined) {
       const customerName = normalizeCustomerName(name);
@@ -210,8 +257,8 @@ router.put("/:id", async (req, res, next) => {
       },
       data: {
         ...data,
-        ...(address !== undefined ? { address: normalizeOptionalString(address) } : {}),
-        ...(note !== undefined ? { note: normalizeOptionalString(note) } : {})
+        ...(address !== undefined ? { address: customerAddress.value } : {}),
+        ...(note !== undefined ? { note: customerNote.value } : {})
       }
     });
 

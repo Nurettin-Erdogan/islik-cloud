@@ -1,315 +1,153 @@
 # Servis Defteri
 
-Servis Defteri; küçük servis işletmeleri için geliştirilen müşteri, iş, ödeme ve operasyon takip panelidir.
+Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustaların ise müşteri, randevu, iş ve ödeme süreçlerini yönettiği web ve mobil uygulamadır.
 
-Bu proje, küçük işletmelerin günlük işlerini daha düzenli takip edebilmesi için geliştirilen full-stack web ve mobil uygulamadır. Amaç; teknik servis, tamirci, saha hizmeti veren küçük işletmeler ve bireysel çalışanlar için müşteri ve iş süreçlerini tek panelden yönetilebilir hale getirmektir.
+## Canlı Sistem
 
-## Canlı Demo
+- Web: https://islik-cloud.vercel.app
+- API: https://islik-cloud-api.onrender.com
+- Sağlık: https://islik-cloud-api.onrender.com/health
+- Hazırlık: https://islik-cloud-api.onrender.com/ready
 
-- Frontend: https://islik-cloud.vercel.app
-- Backend API: https://islik-cloud-api.onrender.com
-- Health check: https://islik-cloud-api.onrender.com/health
+Render ücretsiz planda uykuya geçebildiği için ilk bulut isteği zaman zaman gecikebilir. Uygulama bu durum için uzun istek zaman aşımı, bağlantı durumu ve yeniden deneme akışı içerir.
 
-Not: Backend Render Free üzerinde çalıştığı için uzun süre istek gelmezse uyku moduna geçebilir. İlk istek 30-60 saniye gecikebilir.
+## Sürüm
 
-## Ürün Yönü
-
-Servis Defteri mobil öncelikli geliştirilir. Web uygulamasına ek olarak `apps/mobile` altında Expo ile yazılmış gerçek Android/iOS uygulaması bulunur; Capacitor kullanılmaz.
-
-## Durum
-
-Proje aktif geliştirme aşamasındadır ve şu anda deploy edilmiş çalışan bir full-stack MVP seviyesindedir.
-
-- React frontend
-- Express backend
-- PostgreSQL veritabanı
-- Prisma ORM ve migration yapısı
-- JWT tabanlı kullanıcı girişi
-- Kullanıcıya özel müşteri ve iş kayıtları
-- API integration testleri
-- GitHub Actions CI
-- Render üzerinde backend deploy
-- Vercel üzerinde frontend deploy
+Güncel mobil uygulama sürümü `1.2.0`'dır. Mobil istemci Expo ile gerçek Android/iOS uygulaması olarak yazılmıştır; Capacitor kullanılmaz.
 
 ## Özellikler
 
-### Kullanıcı ve Güvenlik
+### Müşteri
 
-- Kullanıcı kayıt olma
-- Kullanıcı giriş yapma
-- JWT token ile oturum yönetimi
-- Korumalı API endpointleri
-- Kullanıcıya özel veri izolasyonu
-- Başka kullanıcının müşteri veya iş kayıtlarına erişimi engelleme
+- Üye olmadan servis talebi oluşturma
+- Ürün kategorisi, marka, model, adres ve arıza açıklaması ekleme
+- Kameradan veya galeriden en fazla üç arıza fotoğrafı ekleme
+- Fotoğrafları cihazda otomatik küçültme ve sıkıştırma
+- Takip kodu ve telefonla talep durumunu izleme
+- Randevu ve durum geçmişini görme
 
-### Müşteri Yönetimi
+### Usta
 
-- Müşteri oluşturma
-- Müşteri listeleme
-- Müşteri düzenleme
-- Müşteri silme
-- Müşteri arama
-- Telefon alanında sadece rakam kabul etme
-- Ad soyad alanında rakam girişini engelleme
-
-### İş Yönetimi
-
-- İş kaydı oluşturma
-- İş listeleme
-- İş düzenleme
-- İş silme
-- İş durumunu değiştirme
-- Ödeme durumunu değiştirme
-- Öncelik ve randevu alanları
-- İş arama ve filtreleme
-
-### Panel
-
-- Müşteri sayısı
-- İş kaydı sayısı
-- Bekleyen iş sayısı
-- Ödenmiş gelir toplamı
-- Dashboard istatistikleri
-
-## Mobil Uygulama
-
-Projede `apps/mobile` altında Expo ile yazılmış gerçek mobil frontend bulunur. Mobil uygulama mevcut Express API'yi kullanır; backend'i yeniden yazmaz.
-
-Mobil uygulamada:
-
-- Müşteri talep açma ve takip ekranı
-- Usta giriş/kayıt ekranı
-- Bugün, açık, acil, ödeme bekleyen ve tamamlanan iş panosu
-- Müşteri ekleme/düzenleme/silme
+- Güvenli kayıt, giriş ve kalıcı oturum
+- Bugün, açık, acil, ödeme bekleyen ve tamamlanan talep panoları
+- Müşteri oluşturma, düzenleme, arama ve silme
 - Müşteri kartından doğrudan talep açma
-- Talep ekleme/düzenleme/tamamlama/ödendi işaretleme
-- Otomatik yerel/bulut API seçimi ve tek dokunuşla yeniden bağlanma
+- Talep oluşturma, düzenleme, fotoğraf ekleme ve hızlı durum işlemleri
+- Geçmiş randevu oluşturmayı engelleme; mevcut eski kaydı bozmadan düzenleyebilme
+- Ödenmedi, kısmi ödendi ve ödendi takibi
+- Kısmi ödemede kalan tutarı gösterme
+- Türkçe karakterleri dikkate alan müşteri ve talep araması
+- Müşteri ve talep verilerini CSV olarak dışa aktarma/paylaşma
 
-Çalıştırmak için:
+### Mobil Dayanıklılık
 
-```bash
-cd apps/mobile
-npm install
-npm start
-```
-
-Masaüstündeki `Servis Defteri Mobil Baslat.cmd` dosyası bağlantıyı otomatik hazırlar. Docker ve PostgreSQL açıksa hızlı yerel API ile doğru fiziksel ağ adresini kullanır; yerel veritabanı yoksa bulut API'ye geçer. Kullanıcının sunucu adresi girmesi gerekmez. EAS preview APK ve production AAB paketleri Render API adresine bağlanır.
+- Token'ı iOS Keychain / Android Keystore destekli `expo-secure-store` içinde saklama
+- Daha önce AsyncStorage'da saklanan token'ı güvenli alana otomatik taşıma
+- Son müşteri ve talep listesini yerel önbellekten gösterme
+- Bulut API'yi varsayılan kullanma; geliştirmede LAN API'yi otomatik algılama
+- Bağlantı kesildiğinde açık durum ve yeniden deneme seçeneği
+- Android ve iOS üretim bundle doğrulaması
 
 ## Teknolojiler
 
-### Frontend
-
-- React
-- Vite
-- CSS
-- Fetch API
-- Component tabanlı yapı
-- Vercel deploy
-
-### Backend
-
-- Node.js
-- Express.js
-- Prisma ORM
-- PostgreSQL
-- JWT
-- bcryptjs
-- CORS
-- dotenv
-- Render deploy
-
-### Test ve DevOps
-
-- Node.js test runner
-- Supertest
-- Docker Compose
-- GitHub Actions
-- Render PostgreSQL
-
-## Deploy Mimarisi
-
-```text
-Kullanıcı
-   |
-   v
-Vercel Frontend
-   |
-   v
-Render Express API
-   |
-   v
-Render PostgreSQL
-```
-
-Production ortamında frontend `VITE_API_URL` ile Render API adresine bağlanır. Backend tarafında `CORS_ORIGIN` ile Vercel domaini izinli origin olarak tanımlanır.
+- Web: React, Vite, CSS
+- Mobil: Expo, React Native, SecureStore, Image Picker, Image Manipulator
+- API: Node.js, Express, Prisma, JWT, bcryptjs
+- Veritabanı: PostgreSQL
+- Test: Node.js test runner, Supertest
+- CI: GitHub Actions üzerinde API, web, Android ve iOS kontrolleri
+- Barındırma: Vercel, Render, EAS Build
 
 ## Proje Yapısı
 
 ```text
-islik-cloud/
-├── .github/
-│   └── workflows/
-│       ├── api-ci.yml
-│       └── web-ci.yml
+Servis Defteri/
+├── .github/workflows/
+│   ├── api-ci.yml
+│   ├── mobile-ci.yml
+│   └── web-ci.yml
 ├── apps/
 │   ├── api/
-│   │   ├── prisma/
-│   │   ├── src/
-│   │   ├── tests/
-│   │   ├── .env.example
-│   │   └── package.json
+│   ├── mobile/
 │   └── web/
-│       ├── src/
-│       ├── .env.example
-│       └── package.json
 ├── docs/
 ├── docker-compose.yml
-└── README.md
+├── Servis Defteri Baslat.cmd
+└── Servis Defteri Mobil Baslat.cmd
 ```
 
-## Kurulum
+## En Kolay Yerel Çalıştırma
 
-Projeyi klonla:
+Windows'ta masaüstündeki şu dosyalardan birini aç:
 
-```bash
-git clone https://github.com/Nurettin-Erdogan/islik-cloud.git
-cd islik-cloud
-```
+- Web + API: `Servis Defteri Baslat.cmd`
+- Expo mobil geliştirme: `Servis Defteri Mobil Baslat.cmd`
 
-PostgreSQL container'ını başlat:
+Elle başlatmak için önce PostgreSQL ve API:
 
 ```bash
 docker compose up -d postgres
-```
-
-Backend bağımlılıklarını kur:
-
-```bash
 cd apps/api
 npm ci
-```
-
-Backend environment dosyasını oluştur:
-
-```bash
-cp .env.example .env
-```
-
-Backend `.env` örneği:
-
-```env
-DATABASE_URL="postgresql://islik:islik_password@localhost:5432/islik_cloud"
-JWT_SECRET="local-dev-secret"
-```
-
-Prisma migration çalıştır:
-
-```bash
-npx prisma migrate dev
-```
-
-Backend'i başlat:
-
-```bash
+npx prisma migrate deploy
 npm run dev
 ```
 
-Backend varsayılan olarak şu adreste çalışır:
-
-```text
-http://localhost:4000
-```
-
-Yeni bir terminal açıp frontend bağımlılıklarını kur:
+Yeni terminalde web:
 
 ```bash
 cd apps/web
 npm ci
-```
-
-Frontend environment dosyasını oluştur:
-
-```bash
-cp .env.example .env
-```
-
-Frontend `.env` örneği:
-
-```env
-VITE_API_URL=http://localhost:4000
-```
-
-Frontend'i başlat:
-
-```bash
 npm run dev
 ```
 
-Frontend varsayılan olarak şu adreste çalışır:
+Yeni terminalde mobil:
 
-```text
-http://localhost:5173
+```bash
+cd apps/mobile
+npm ci
+npm start
 ```
 
-## API Endpointleri
+Yerel adresler:
 
-### Health
+- Web: `http://localhost:5173`
+- API: `http://localhost:4000`
+- API sağlık: `http://localhost:4000/health`
 
-```http
-GET /health
+Fiziksel telefonda Expo Go kullanırken telefon ve bilgisayar aynı Wi-Fi ağında olmalıdır. Normal APK/mağaza sürümü doğrudan bulut API'ye bağlanır.
+
+## Ortam Değişkenleri
+
+API için `apps/api/.env`:
+
+```env
+DATABASE_URL="postgresql://islik:islik_password@localhost:5432/islik_cloud"
+JWT_SECRET="yalnizca-yerel-gelistirme-icin-guclu-bir-secret"
+CORS_ORIGIN="http://localhost:5173"
+PUBLIC_SERVICE_OWNER_EMAIL="usta@example.com"
 ```
 
-### Auth
+Web için `apps/web/.env`:
 
-```http
-POST /api/auth/register
-POST /api/auth/login
-GET  /api/auth/me
+```env
+VITE_API_URL="http://localhost:4000"
 ```
 
-### Customers
+Mobil için `apps/mobile/.env.local`:
 
-Bu endpointler authentication gerektirir.
-
-```http
-GET    /api/customers
-POST   /api/customers
-GET    /api/customers/:id
-PUT    /api/customers/:id
-DELETE /api/customers/:id
+```env
+EXPO_PUBLIC_API_URL="https://islik-cloud-api.onrender.com"
 ```
 
-### Jobs
-
-Bu endpointler authentication gerektirir.
-
-```http
-GET    /api/jobs
-POST   /api/jobs
-GET    /api/jobs/:id
-PUT    /api/jobs/:id
-DELETE /api/jobs/:id
-```
-
-## Veri İzolasyonu
-
-Uygulamada her kullanıcı yalnızca kendi müşteri ve iş kayıtlarını görebilir.
-
-- Customer kayıtları `userId` ile kullanıcıya bağlanır.
-- Job kayıtları Customer ilişkisi üzerinden kullanıcıya göre filtrelenir.
-- Başka kullanıcının customer veya job id'si ile işlem yapılması 404 veya 400 ile engellenir.
-- Bu davranış API integration testleriyle kontrol edilir.
+`PUBLIC_SERVICE_OWNER_EMAIL`, müşterilerin üye olmadan açtığı taleplerin hangi usta hesabına düşeceğini belirler. Gerçek secret ve parolalar repoya eklenmemelidir.
 
 ## Testler
-
-Backend testlerini çalıştır:
 
 ```bash
 cd apps/api
 npm test
 ```
-
-Frontend lint ve build kontrolü:
 
 ```bash
 cd apps/web
@@ -317,59 +155,43 @@ npm run lint
 npm run build
 ```
 
-## GitHub Actions
+```bash
+cd apps/mobile
+npm run doctor
+npx expo export --platform android
+npx expo export --platform ios
+```
 
-Projede iki ayrı CI workflow vardır.
+API testleri ana veriyi silmemek için yalnızca yerel `islik_test` PostgreSQL şemasını kullanır.
 
-### API CI
+## API
 
-- `npm ci`
-- `npx prisma migrate deploy`
-- `npx prisma generate`
-- `npm test`
-- API health check
+```http
+GET  /health
+GET  /ready
 
-### Web CI
+POST /api/auth/register
+POST /api/auth/login
+GET  /api/auth/me
 
-- `npm ci`
-- `npm run lint`
-- `npm run build`
+POST /api/public/requests
+GET  /api/public/requests/:requestCode?phone=...
 
-## Geliştirme Geçmişi
+GET    /api/customers
+POST   /api/customers
+GET    /api/customers/:id
+PUT    /api/customers/:id
+DELETE /api/customers/:id
 
-Bu proje adım adım PR akışıyla geliştirilmiştir:
+GET    /api/jobs
+POST   /api/jobs
+GET    /api/jobs/:id
+PUT    /api/jobs/:id
+DELETE /api/jobs/:id
+```
 
-- Proje yapısı oluşturuldu
-- Express API eklendi
-- API health endpoint eklendi
-- API CI eklendi
-- React frontend eklendi
-- Web CI eklendi
-- PostgreSQL + Prisma eklendi
-- Customer ve Job modelleri oluşturuldu
-- Customer CRUD API yazıldı
-- Job CRUD API yazıldı
-- API integration testleri eklendi
-- Frontend backend API'ye bağlandı
-- Düzenleme, silme ve durum aksiyonları eklendi
-- Arama ve filtreleme eklendi
-- JWT authentication eklendi
-- Kullanıcıya özel veri izolasyonu eklendi
-- Frontend component yapısı düzenlendi
-- Demo seed scripti eklendi
-- Render backend deploy tamamlandı
-- Vercel frontend deploy tamamlandı
-- Marka adı Servis Defteri olarak güncellendi
+Müşteri ve talep endpointleri JWT ister. Her sorgu giriş yapan kullanıcıya göre filtrelenir; başka bir ustanın kayıtlarına kimlik üzerinden erişim engellenir ve integration testleriyle doğrulanır.
 
-## Sıradaki Aşamalar
+## Yayın
 
-- Ekran görüntüleri
-- Swagger / OpenAPI dokümantasyonu
-- Workspace / işletme yapısı
-- Rol ve yetki yönetimi
-- Production secret rotasyonu
-- Custom domain
-
-## Not
-
-Bu proje aktif geliştirme aşamasındadır. Amaç, Servis Defteri'ni production'a daha yakın full-stack bir işletme takip uygulamasına dönüştürmektir.
+Yayın öncesi bütün adımlar [deploy-checklist.md](docs/deploy-checklist.md) içinde, cihaz ve tarayıcı kabul senaryoları ise [manual-test-plan.txt](docs/manual-test-plan.txt) içindedir.

@@ -35,6 +35,11 @@ const jobInclude = {
 const MAX_JOB_PHOTOS = 3;
 const MAX_PHOTO_DATA_URL_LENGTH = 950000;
 const PHOTO_DATA_URL_PATTERN = /^data:image\/(png|jpe?g|webp);base64,/i;
+const MAX_CUSTOMER_NAME_LENGTH = 80;
+const MAX_PHONE_LENGTH = 15;
+const MAX_ADDRESS_LENGTH = 250;
+const MAX_PRODUCT_TEXT_LENGTH = 80;
+const MAX_DESCRIPTION_LENGTH = 2000;
 
 function normalizePhotos(value) {
   if (value === undefined || value === null) {
@@ -81,7 +86,7 @@ function normalizePhotos(value) {
     photos.push({
       id:
         typeof item.id === "string" && item.id.trim()
-          ? item.id.trim()
+          ? item.id.trim().slice(0, 80)
           : "photo-" + Date.now() + "-" + index,
       name: typeof item.name === "string" && item.name.trim() ? item.name.trim().slice(0, 80) : "Fotoğraf",
       type: typeof item.type === "string" && item.type.trim() ? item.type.trim().slice(0, 50) : "image/jpeg",
@@ -99,10 +104,16 @@ function safePhotos(value) {
 }
 
 
-function normalizeRequiredString(value, fieldName, minLength = 1) {
+function normalizeRequiredString(value, fieldName, minLength = 1, maxLength = 2000) {
   if (typeof value !== "string" || value.trim().length < minLength) {
     return {
       error: fieldName + " is required."
+    };
+  }
+
+  if (value.trim().length > maxLength) {
+    return {
+      error: fieldName + " must be at most " + maxLength + " characters."
     };
   }
 
@@ -111,7 +122,7 @@ function normalizeRequiredString(value, fieldName, minLength = 1) {
   };
 }
 
-function normalizeOptionalString(value, fieldName) {
+function normalizeOptionalString(value, fieldName, maxLength) {
   if (value === undefined || value === null) {
     return {
       value: null
@@ -126,13 +137,19 @@ function normalizeOptionalString(value, fieldName) {
 
   const trimmed = value.trim();
 
+  if (trimmed.length > maxLength) {
+    return {
+      error: fieldName + " must be at most " + maxLength + " characters."
+    };
+  }
+
   return {
     value: trimmed.length > 0 ? trimmed : null
   };
 }
 
 function normalizeCustomerName(value) {
-  const name = normalizeRequiredString(value, "name", 2);
+  const name = normalizeRequiredString(value, "name", 2, MAX_CUSTOMER_NAME_LENGTH);
 
   if (name.error) {
     return name;
@@ -165,6 +182,12 @@ function normalizePhone(value) {
   if (phone.length < 10) {
     return {
       error: "phone is required."
+    };
+  }
+
+  if (phone.length > MAX_PHONE_LENGTH) {
+    return {
+      error: "phone must contain at most 15 digits."
     };
   }
 
@@ -223,9 +246,7 @@ function publicJob(job) {
       createdAt: event.createdAt
     })),
     customer: {
-      name: job.customer.name,
-      phone: job.customer.phone,
-      address: job.customer.address
+      name: job.customer.name
     }
   };
 }
@@ -331,12 +352,12 @@ router.post("/", async (req, res, next) => {
 
     const name = normalizeCustomerName(req.body.name);
     const phone = normalizePhone(req.body.phone);
-    const address = normalizeOptionalString(req.body.address, "address");
+    const address = normalizeOptionalString(req.body.address, "address", MAX_ADDRESS_LENGTH);
     const productCategory = normalizeProductCategory(req.body.productCategory);
-    const productBrand = normalizeOptionalString(req.body.productBrand, "productBrand");
-    const productModel = normalizeOptionalString(req.body.productModel, "productModel");
+    const productBrand = normalizeOptionalString(req.body.productBrand, "productBrand", MAX_PRODUCT_TEXT_LENGTH);
+    const productModel = normalizeOptionalString(req.body.productModel, "productModel", MAX_PRODUCT_TEXT_LENGTH);
     const photos = normalizePhotos(req.body.photos);
-    const description = normalizeRequiredString(req.body.description, "description", 10);
+    const description = normalizeRequiredString(req.body.description, "description", 10, MAX_DESCRIPTION_LENGTH);
 
     const error =
       name.error ||
@@ -390,8 +411,8 @@ router.get("/:requestCode", async (req, res, next) => {
     const requestCode = String(req.params.requestCode || "").trim().toUpperCase();
     const phone = normalizePhone(String(req.query.phone || ""));
 
-    if (!requestCode) {
-      return validationError(res, "requestCode is required.");
+    if (!/^SD-\d{6}$/.test(requestCode)) {
+      return validationError(res, "requestCode must be valid.");
     }
 
     if (phone.error) {

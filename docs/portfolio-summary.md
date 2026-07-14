@@ -1,10 +1,10 @@
-# Dükkan Defteri - Portföy Özeti
+# Servis Defteri - Portföy Özeti
 
 ## Kısa Açıklama
 
-Dükkan Defteri, küçük servis işletmeleri için geliştirilen full-stack müşteri ve iş takip uygulamasıdır.
+Servis Defteri, küçük servis işletmeleri için geliştirilen full-stack web ve gerçek mobil servis talep uygulamasıdır.
 
-Uygulama; kullanıcı kaydı, giriş, müşteri yönetimi, iş kaydı yönetimi, ödeme durumu takibi, arama/filtreleme ve kullanıcıya özel veri izolasyonu özelliklerini içerir.
+Uygulama; müşterinin fotoğraflı arıza talebi açıp takip edebilmesini, ustanın müşteri, randevu, iş ve kısmi ödeme süreçlerini yönetebilmesini sağlar.
 
 ## Canlı Linkler
 
@@ -15,6 +15,7 @@ Uygulama; kullanıcı kaydı, giriş, müşteri yönetimi, iş kaydı yönetimi,
 ## Teknik Stack
 
 - Frontend: React, Vite, CSS
+- Mobile: Expo, React Native, SecureStore
 - Backend: Node.js, Express.js
 - Database: PostgreSQL
 - ORM: Prisma
@@ -26,17 +27,19 @@ Uygulama; kullanıcı kaydı, giriş, müşteri yönetimi, iş kaydı yönetimi,
 ## Öne Çıkan Teknik Noktalar
 
 - Monorepo yapısı kullanıldı.
-- Backend ve frontend ayrı uygulamalar olarak geliştirildi.
+- Web, mobil ve API ayrı uygulamalar olarak geliştirildi.
 - PostgreSQL veritabanı Prisma migration yapısıyla yönetildi.
 - Kullanıcı kayıt/giriş akışı JWT ile kuruldu.
 - Customer ve Job kayıtları kullanıcıya özel izole edildi.
 - API endpointleri integration testleriyle kontrol edildi.
+- Büyük fotoğraflar web ve mobilde cihaz üzerinde sıkıştırıldı.
+- Android ve iOS bundle üretimi CI ile doğrulandı.
 - Frontend component yapısına ayrıldı.
 - Backend Render'a, frontend Vercel'e deploy edildi.
 
 ## Portföyde Kullanılabilecek Açıklama
 
-Dükkan Defteri, küçük servis işletmelerinin müşteri ve iş kayıtlarını yönetebilmesi için geliştirdiğim full-stack bir web uygulamasıdır. Projede React/Vite frontend, Express.js backend, Prisma ORM ve PostgreSQL veritabanı kullanıldı. Kullanıcılar kayıt olabilir, giriş yapabilir, kendi müşteri ve iş kayıtlarını oluşturup yönetebilir. Veriler kullanıcı bazında izole edilir; bir kullanıcı başka kullanıcının verilerine erişemez. Proje GitHub Actions ile test/build süreçlerine ve Render + Vercel üzerinden canlı deploy yapısına sahiptir.
+Servis Defteri, müşterilerin fotoğraflı servis talebi açıp takip edebildiği, ustaların müşteri, randevu, iş ve ödeme süreçlerini yönetebildiği full-stack web ve mobil uygulamadır. React/Vite web istemcisi ile Expo/React Native mobil istemcisi aynı Express, Prisma ve PostgreSQL API'sini kullanır. JWT oturumu, kullanıcı bazlı veri izolasyonu, çevrimdışı mobil önbellek, SecureStore ve GitHub Actions kontrolleriyle uçtan uca geliştirildi.
 
 ## Demo Notu
 

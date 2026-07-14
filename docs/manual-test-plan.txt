@@ -1,15 +1,67 @@
-Manual Test Plan
+SERVİS DEFTERİ 1.2.0 MANUEL KABUL PLANI
 
-1. Open frontend.
-2. Create account.
-3. Login.
-4. Add customer.
-5. Add job.
-6. Update job status.
-7. Update payment status.
-8. Refresh page.
-9. Logout.
-10. Login again.
-11. Check saved data.
+Ön koşullar
+1. API /health ve /ready 200 dönüyor.
+2. Web production API adresini kullanıyor.
+3. Telefon ve test cihazında internet erişimi var.
 
-Expected result: The app works end to end and saved data stays visible after refresh and login.
+Müşteri talebi
+1. Müşteri sekmesini aç.
+2. Ad alanına rakam yazmayı dene; rakam kabul edilmemeli.
+3. Telefon alanına harf yazmayı dene; harf kabul edilmemeli.
+4. Eksik veya 10 haneden kısa telefonla göndermeyi dene; hata görünmeli.
+5. Galeriden üç büyük fotoğraf seç; önizlemeler görünmeli.
+6. Bir fotoğrafı kaldırıp yeniden ekle.
+7. Talebi oluştur; takip kodu görünmeli.
+8. Takip kodu ve telefonla talebi ara; durum, ürün ve fotoğraflar görünmeli.
+9. Yanlış telefonla aynı kodu ara; talep bulunmamalı.
+
+Usta hesabı
+1. Geçerli e-posta ve en az 8 karakter parola ile yeni hesap aç.
+2. Aynı e-posta ile yeniden kayıt ol; uygulama giriş moduna geçmeli.
+3. Yanlış parolayla giriş yap; anlaşılır hata görünmeli.
+4. Doğru bilgilerle giriş yap ve uygulamayı kapat/aç; oturum korunmalı.
+5. Çıkış yap; korumalı panoya geri dönülememeli.
+
+Müşteri yönetimi
+1. Ad, telefon, adres ve notla müşteri oluştur.
+2. Aramada adın yalnızca ilk harfini yaz; eşleşen müşteri hemen görünmeli.
+3. Türkçe İ/ı/ş/ğ/ü/ö karakterleriyle ara; doğru sonuç görünmeli.
+4. Müşteriyi düzenle ve sayfayı yenile; değişiklik korunmalı.
+5. Müşteri kartından doğrudan talep aç.
+
+Talep ve randevu
+1. Ürün, başlık, fiyat, öncelik ve gelecek randevuyla talep oluştur.
+2. Geçmiş tarih seçmeyi dene; kayıt engellenmeli.
+3. Talebi İncelemede, Tamamlandı ve İptal durumlarına geçir.
+4. Durum geçmişinin doğru sırada göründüğünü kontrol et.
+5. Eski randevulu bir kaydın yalnızca başlığını düzenle; kaydedilebilmeli.
+6. Aynı eski kayda farklı bir geçmiş randevu ver; engellenmeli.
+
+Ödeme
+1. Fiyatı 1000 TL olan talebi Ödenmedi kaydet.
+2. Kısmi ödendi seç ve 400 TL gir; Kalan 600 TL görünmeli.
+3. Sayfayı yenile; ödenen ve kalan tutar korunmalı.
+4. Ödendi işaretle; ödenen tutar fiyatla eşit olmalı.
+
+Bağlantı ve veri
+1. İnterneti kapat; bağlantı uyarısı ve yeniden dene seçeneği görünmeli.
+2. Mobilde daha önce yüklenmiş müşteri/talep listesi önbellekten görünmeli.
+3. İnterneti açıp yeniden dene; güncel veri yüklenmeli.
+4. Webde CSV İndir, mobilde Verileri Paylaş işlemini çalıştır.
+5. CSV'yi aç; müşteri, talep, ödeme ve tarih alanlarını kontrol et.
+
+Yetki ve gizlilik
+1. İki ayrı usta hesabı oluştur.
+2. Birinci hesapta müşteri ve talep ekle.
+3. İkinci hesapta bu kayıtların görünmediğini doğrula.
+4. Public takip ağ cevabında müşteri telefonu ve adresi bulunmadığını doğrula.
+
+Ekran kontrolü
+1. Webi 375 px mobil, tablet ve masaüstü genişliğinde kontrol et.
+2. Metin, buton ve formlarda taşma/üst üste binme olmamalı.
+3. Android geri tuşu, klavye açılması ve kaydırma formu bozmamalı.
+4. iOS safe area, kamera/galeri izinleri ve klavye davranışı doğru olmalı.
+
+Beklenen sonuç
+Bütün kritik senaryolar hatasız tamamlanır; kayıtlar yenileme ve yeniden giriş sonrasında korunur.

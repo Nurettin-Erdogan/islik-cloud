@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import React from "react";
 import { Alert, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -37,6 +38,51 @@ function createMobilePhoto(asset) {
   };
 }
 
+function getResizeAction(asset, maxEdge) {
+  const width = Number(asset.width || 0);
+  const height = Number(asset.height || 0);
+
+  if (!width || !height || Math.max(width, height) <= maxEdge) {
+    return [];
+  }
+
+  return width >= height
+    ? [{ resize: { width: maxEdge } }]
+    : [{ resize: { height: maxEdge } }];
+}
+
+async function prepareMobilePhoto(asset) {
+  const variants = [
+    { maxEdge: 1600, compress: 0.58 },
+    { maxEdge: 1280, compress: 0.46 },
+    { maxEdge: 960, compress: 0.36 },
+    { maxEdge: 720, compress: 0.3 }
+  ];
+
+  for (const variant of variants) {
+    const result = await ImageManipulator.manipulateAsync(
+      asset.uri,
+      getResizeAction(asset, variant.maxEdge),
+      {
+        base64: true,
+        compress: variant.compress,
+        format: ImageManipulator.SaveFormat.JPEG
+      }
+    );
+    const photo = createMobilePhoto({
+      ...result,
+      fileName: asset.fileName || "Fotoğraf.jpg",
+      mimeType: "image/jpeg"
+    });
+
+    if (!photo.error) {
+      return photo;
+    }
+  }
+
+  return { error: "Fotoğraf sıkıştırılamadı. Daha küçük bir fotoğraf seç." };
+}
+
 async function pickPhotos(currentPhotos, onChange) {
   const current = normalizePhotoList(currentPhotos);
   const remaining = MAX_MOBILE_PHOTOS - current.length;
@@ -57,8 +103,8 @@ async function pickPhotos(currentPhotos, onChange) {
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     allowsMultipleSelection: true,
     selectionLimit: remaining,
-    base64: true,
-    quality: 0.35
+    base64: false,
+    quality: 1
   });
 
   if (result.canceled) {
@@ -68,7 +114,7 @@ async function pickPhotos(currentPhotos, onChange) {
   const nextPhotos = [...current];
 
   for (const asset of result.assets || []) {
-    const photo = createMobilePhoto(asset);
+    const photo = await prepareMobilePhoto(asset);
     if (photo.error) {
       Alert.alert("Fotoğraf eklenemedi", photo.error);
       continue;
@@ -96,15 +142,15 @@ async function takePhoto(currentPhotos, onChange) {
 
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    base64: true,
-    quality: 0.35
+    base64: false,
+    quality: 1
   });
 
   if (result.canceled || !result.assets?.[0]) {
     return;
   }
 
-  const photo = createMobilePhoto(result.assets[0]);
+  const photo = await prepareMobilePhoto(result.assets[0]);
 
   if (photo.error) {
     Alert.alert("Fotoğraf eklenemedi", photo.error);
@@ -124,6 +170,22 @@ function PhotoButton({ title, onPress, disabled }) {
 
 export function PhotoPicker({ photos, onChange }) {
   const items = normalizePhotoList(photos);
+  const [busy, setBusy] = React.useState(false);
+
+  async function runPhotoAction(action) {
+    if (busy) {
+      return;
+    }
+
+    try {
+      setBusy(true);
+      await action();
+    } catch {
+      Alert.alert("Fotoğraf eklenemedi", "Fotoğraf hazırlanırken bir hata oluştu. Tekrar dene.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <View style={styles.photoPicker}>
@@ -137,8 +199,9 @@ export function PhotoPicker({ photos, onChange }) {
             <View key={photo.id || getPhotoUri(photo)} style={styles.photoTile}>
               <Image source={{ uri: getPhotoUri(photo) }} style={styles.photoImage} />
               <Pressable
-                style={styles.photoRemove}
+                style={[styles.photoRemove, busy && styles.disabledAction]}
                 onPress={() => onChange(items.filter((item) => item !== photo))}
+                disabled={busy}
               >
                 <Text style={styles.photoRemoveText}>Sil</Text>
               </Pressable>
@@ -148,9 +211,18 @@ export function PhotoPicker({ photos, onChange }) {
       ) : (
         <Text style={styles.muted}>Arızayı gösteren fotoğraf ekleyebilirsin.</Text>
       )}
+      {busy ? <Text style={styles.muted}>Fotoğraf hazırlanıyor...</Text> : null}
       <View style={styles.actionRow}>
-        <PhotoButton title="Galeriden Seç" onPress={() => pickPhotos(items, onChange)} />
-        <PhotoButton title="Kamera" onPress={() => takePhoto(items, onChange)} />
+        <PhotoButton
+          title="Galeriden Seç"
+          onPress={() => runPhotoAction(() => pickPhotos(items, onChange))}
+          disabled={busy || items.length >= MAX_MOBILE_PHOTOS}
+        />
+        <PhotoButton
+          title="Kamera"
+          onPress={() => runPhotoAction(() => takePhoto(items, onChange))}
+          disabled={busy || items.length >= MAX_MOBILE_PHOTOS}
+        />
       </View>
     </View>
   );

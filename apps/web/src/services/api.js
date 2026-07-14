@@ -2,6 +2,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const TOKEN_KEY = "islik_cloud_token";
 const USER_KEY = "islik_cloud_user";
 const WARMUP_TIMEOUT_MS = 8_000;
+const REQUEST_TIMEOUT_MS = 75_000;
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -42,16 +43,34 @@ export function logout() {
 
 async function request(path, options = {}) {
   const token = getToken();
-  const { headers, ...fetchOptions } = options;
+  const { headers, signal: suppliedSignal, ...fetchOptions } = options;
+  const controller = suppliedSignal ? null : new AbortController();
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    : null;
+  let response;
 
-  const response = await fetch(API_URL + path, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: "Bearer " + token } : {}),
-      ...(headers || {})
-    },
-    ...fetchOptions
-  });
+  try {
+    response = await fetch(API_URL + path, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: "Bearer " + token } : {}),
+        ...(headers || {})
+      },
+      signal: suppliedSignal || controller.signal,
+      ...fetchOptions
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("Sunucu zamanında yanıt vermedi. Tekrar dene.");
+    }
+
+    throw new Error("Sunucuya bağlanılamadı. İnternet bağlantını kontrol et.");
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 
   if (!response.ok) {
     let message = "API request failed.";
@@ -63,7 +82,9 @@ async function request(path, options = {}) {
       message = response.statusText || message;
     }
 
-    throw new Error(message);
+    const requestError = new Error(message);
+    requestError.status = response.status;
+    throw requestError;
   }
 
   if (response.status === 204) {

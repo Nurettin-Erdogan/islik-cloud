@@ -518,6 +518,15 @@ h2 {
 .payment-detail {
   display: block;
 }
+.customer-phone {
+  width: fit-content;
+  color: #0f766e;
+  font-weight: 800;
+  text-decoration: none;
+}
+.customer-phone:hover {
+  text-decoration: underline;
+}
 .auth-shell {
   display: grid;
   min-height: 100vh;
@@ -740,6 +749,14 @@ h2 {
     min-height: 100dvh;
     padding: 12px;
   }
+  .auth-shell input,
+  .auth-shell select,
+  .auth-shell textarea {
+    font-size: 16px;
+  }
+  .auth-shell button {
+    min-height: 44px;
+  }
   .auth-card,
   .panel,
   .stat-card {
@@ -798,6 +815,86 @@ h2 {
   border-top: 1px solid #e2e8f0;
   padding-top: 16px;
 }
+.portal-photo-picker {
+  display: grid;
+  gap: 10px;
+}
+.portal-photo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #334155;
+}
+.portal-photo-header span {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 750;
+}
+.portal-photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+.portal-photo-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 44px;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #115e59;
+  background: #f0fdfa;
+  cursor: pointer;
+  font-weight: 800;
+}
+.portal-photo-button:hover {
+  border-color: #0f766e;
+  background: #ccfbf1;
+}
+.portal-photo-button.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.portal-photo-grid,
+.portal-result-photos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.portal-photo-item {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #d5dce8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+.portal-photo-image,
+.portal-result-photos img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.portal-photo-remove {
+  width: 100%;
+  min-height: 36px;
+  border-radius: 0;
+  color: #991b1b;
+  background: #fff1f2;
+  font-size: 0.82rem;
+}
+.portal-photo-remove:hover:not(:disabled) {
+  color: #ffffff;
+  background: #dc2626;
+}
 .portal-result {
   display: grid;
   gap: 6px;
@@ -831,5 +928,9 @@ h2 {
   .two-columns,
   .three-columns {
     grid-template-columns: 1fr;
+  }
+  .portal-photo-grid,
+  .portal-result-photos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
