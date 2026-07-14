@@ -1,0 +1,34 @@
+{
+  "name": "servis-defteri-mobile",
+  "version": "1.2.0",
+  "private": true,
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "doctor": "npx expo-doctor",
+    "config:check": "expo config --type public",
+    "export:android": "expo export --platform android",
+    "build:apk": "npx eas-cli build --platform android --profile preview",
+    "build:aab": "npx eas-cli build --platform android --profile production",
+    "build:ios": "npx eas-cli build --platform ios --profile production"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "expo": "~54.0.0",
+    "expo-file-system": "~19.0.23",
+    "expo-image-manipulator": "~14.0.8",
+    "expo-image-picker": "~17.0.11",
+    "expo-secure-store": "~15.0.8",
+    "expo-sharing": "~14.0.8",
+    "lucide-react-native": "^1.24.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-svg": "15.12.1"
+  },
+  "devDependencies": {
+    "babel-preset-expo": "~54.0.10"
+  }
+}

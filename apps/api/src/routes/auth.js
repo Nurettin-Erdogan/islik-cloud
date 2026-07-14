@@ -4,35 +4,39 @@ const { prisma } = require("../lib/prisma");
 const { requireAuth, signToken } = require("../middleware/auth");
 
 const router = express.Router();
+const MAX_EMAIL_LENGTH = 254;
+const MAX_NAME_LENGTH = 80;
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 128;
 
 function normalizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
 
 function normalizeName(name) {
-  if (name === undefined || name === null) {
-    return {
-      value: null
-    };
-  }
-
   if (typeof name !== "string") {
     return {
-      error: "Name must be a string."
+      error: "Name is required."
     };
   }
 
   const trimmed = name.trim();
 
-  if (trimmed.length === 0) {
+  if (trimmed.length < 2) {
     return {
-      value: null
+      error: "Name must be at least 2 characters."
     };
   }
 
   if (/\d/.test(trimmed)) {
     return {
       error: "Name cannot contain numbers."
+    };
+  }
+
+  if (trimmed.length > MAX_NAME_LENGTH) {
+    return {
+      error: "Name must be at most 80 characters."
     };
   }
 
@@ -65,7 +69,11 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    if (!email || !email.includes("@")) {
+    if (
+      !email ||
+      email.length > MAX_EMAIL_LENGTH ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
       return res.status(400).json({
         error: {
           message: "Valid email is required."
@@ -73,10 +81,18 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    if (typeof password !== "string" || password.length < 6) {
+    if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
       return res.status(400).json({
         error: {
-          message: "Password must be at least 6 characters."
+          message: "Password must be at least 8 characters."
+        }
+      });
+    }
+
+    if (password.length > MAX_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        error: {
+          message: "Password must be at most 128 characters."
         }
       });
     }
@@ -120,6 +136,21 @@ router.post("/login", async (req, res, next) => {
   try {
     const email = normalizeEmail(req.body.email);
     const password = req.body.password;
+
+    if (
+      !email ||
+      email.length > MAX_EMAIL_LENGTH ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      typeof password !== "string" ||
+      password.length === 0 ||
+      password.length > MAX_PASSWORD_LENGTH
+    ) {
+      return res.status(401).json({
+        error: {
+          message: "Invalid email or password."
+        }
+      });
+    }
 
     const user = await prisma.user.findUnique({
       where: {

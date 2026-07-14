@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "Servis Defteri",
+    "slug": "servis-defteri",
+    "version": "1.2.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon-v2.png",
+    "userInterfaceStyle": "light",
+    "scheme": "servisdefteri",
+    "splash": {
+      "image": "./assets/splash-v2.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#111827"
+    },
+    "assetBundlePatterns": [
+      "assets/**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nurettin.servisdefteri",
+      "buildNumber": "2"
+    },
+    "android": {
+      "package": "com.nurettin.servisdefteri",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-v2.png",
+        "monochromeImage": "./assets/monochrome-icon-v2.png",
+        "backgroundColor": "#111827"
+      },
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
+      "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "extra": {
+      "apiUrl": "https://islik-cloud-api.onrender.com",
+      "eas": {
+        "projectId": "f74f0b25-68ec-443e-9227-f4f468b8d759"
+      }
+    },
+    "jsEngine": "hermes",
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Servis talebine fotoğraf eklemek için galeri izni kullanılır.",
+          "cameraPermission": "Arıza fotoğrafı çekmek için kamera izni kullanılır."
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "description": "Müşteri servis taleplerini, randevuları ve ödemeleri tek yerden yönetin.",
+    "owner": "nuribaba"
+  }
+}

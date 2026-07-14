@@ -14,7 +14,7 @@ function FiltersPanel({
   return (
     <section className="panel filter-panel">
       <div className="panel-heading">
-        <h2>Arama</h2>
+        <h2>Talep Arama</h2>
         <button type="button" className="secondary-button" onClick={onResetFilters}>
           Temizle
         </button>
@@ -31,23 +31,23 @@ function FiltersPanel({
         </label>
 
         <label>
-          İş
+          Talep
           <input
             value={jobSearch}
             onChange={(event) => onJobSearchChange(event.target.value)}
-            placeholder="Başlık, açıklama veya müşteri ara"
+            placeholder="Takip kodu, ürün, arıza veya müşteri ara"
           />
         </label>
 
         <label>
-          İş Durumu
+          Talep Durumu
           <select
             value={jobStatusFilter}
             onChange={(event) => onJobStatusFilterChange(event.target.value)}
           >
             <option value="all">Tüm durumlar</option>
-            <option value="pending">Bekliyor</option>
-            <option value="in_progress">Devam ediyor</option>
+            <option value="pending">Talep alındı</option>
+            <option value="in_progress">İncelemede</option>
             <option value="completed">Tamamlandı</option>
             <option value="cancelled">İptal edildi</option>
           </select>
@@ -69,7 +69,7 @@ function FiltersPanel({
 
       <div className="filter-summary">
         <span>{filteredCustomerCount} müşteri</span>
-        <span>{filteredJobCount} iş</span>
+        <span>{filteredJobCount} talep</span>
       </div>
     </section>
   );

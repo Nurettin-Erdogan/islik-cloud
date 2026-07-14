@@ -1,16 +1,44 @@
-# React + Vite
+# Servis Defteri Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Servis Defteri, müşteri arıza talebi açma ve usta servis takibi için hazırlanmış React + Vite arayüzüdür.
 
-Currently, two official plugins are available:
+## Komutlar
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm run dev
+npm run build
+npm run lint
+```
 
-## React Compiler
+## PWA
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Web arayüzünde PWA manifest, ikonlar, offline sayfası ve service worker kaydı vardır. HTTPS üzerinde yayınlandığında Android Chrome ve iPhone Safari üzerinden ana ekrana eklenebilir.
 
-## Expanding the Oxlint configuration
+Local bilgisayarda PWA kaydı `localhost` üzerinde çalışır:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```bash
+npm run build
+npm run preview
+```
+
+Ardından `http://localhost:4173` adresinde manifest ve service worker test edilebilir.
+
+## Mobil cihazdan local test
+
+Aynı Wi-Fi ağındaki telefondan ekranı denemek için API ve web sunucusunu bilgisayar IP adresiyle aç:
+
+```bash
+# apps/api
+npm run dev
+
+# apps/web
+npm run dev -- --host 0.0.0.0
+```
+
+Telefon tarayıcısından `http://BILGISAYAR_IP:5173` adresine gir. Web tarafındaki `.env` içinde API adresi de telefonun erişebileceği şekilde ayarlanmalıdır:
+
+```env
+VITE_API_URL=http://BILGISAYAR_IP:4000
+```
+
+Not: Telefonda gerçek kurulabilir PWA deneyimi için adresin HTTPS olması gerekir. Local IP ile ekranı test edebilirsin; tam kurulum için uygulamayı HTTPS bir adrese deploy etmek gerekir.

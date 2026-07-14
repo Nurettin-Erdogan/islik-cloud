@@ -36,6 +36,7 @@ function CustomerForm({
           placeholder="Ahmet Yılmaz"
           autoComplete="name"
           pattern="[^0-9]*"
+          maxLength={80}
           required
         />
       </label>
@@ -51,6 +52,7 @@ function CustomerForm({
           placeholder="05551234567"
           autoComplete="tel"
           pattern="[0-9]*"
+          maxLength={15}
         />
       </label>
 
@@ -61,6 +63,7 @@ function CustomerForm({
           value={form.address}
           onChange={onChange}
           placeholder="İstanbul"
+          maxLength={250}
         />
       </label>
 
@@ -71,6 +74,7 @@ function CustomerForm({
           value={form.note}
           onChange={onChange}
           placeholder="Müşteri notu"
+          maxLength={1000}
         />
       </label>
 

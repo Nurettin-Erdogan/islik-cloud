@@ -1,12 +1,10 @@
 generator client {
   provider = "prisma-client-js"
 }
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
 model User {
   id           String     @id @default(cuid())
   name         String?
@@ -16,7 +14,6 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
-
 model Customer {
   id        String   @id @default(cuid())
   userId    String?
@@ -28,22 +25,39 @@ model Customer {
   jobs      Job[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   @@index([userId])
 }
-
 model Job {
-  id            String    @id @default(cuid())
-  customerId    String
-  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  title         String
-  description   String?
-  status        String    @default("pending")
-  priority      String    @default("normal")
-  price         Float     @default(0)
-  paidAmount    Float     @default(0)
-  paymentStatus String    @default("unpaid")
-  appointmentAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  requestCode     String?   @unique
+  source          String    @default("technician")
+  productCategory String?   @default("other")
+  productBrand    String?
+  productModel    String?
+  title           String
+  description     String?
+  status          String    @default("pending")
+  priority        String    @default("normal")
+  price           Float     @default(0)
+  paidAmount      Float     @default(0)
+  paymentStatus   String    @default("unpaid")
+  appointmentAt   DateTime?
+  photos          Json      @default("[]")
+  statusEvents    JobStatusEvent[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model JobStatusEvent {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status    String
+  actor     String   @default("system")
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
 }

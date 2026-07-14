@@ -1,101 +1,153 @@
+const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 const demoEmail = process.env.DEMO_EMAIL || "demo@islik.dev";
 
-async function main() {
-  const user = await prisma.user.findUnique({
+async function findOrCreateDemoUser() {
+  const existingUser = await prisma.user.findUnique({
     where: {
       email: demoEmail
     }
   });
 
-  if (!user) {
-    throw new Error("Demo user not found. Register this email first: " + demoEmail);
+  if (existingUser) {
+    return existingUser;
   }
 
-  await prisma.customer.deleteMany({
+  return prisma.user.create({
+    data: {
+      email: demoEmail,
+      name: "Demo Usta",
+      passwordHash: await bcrypt.hash("demo1234", 12)
+    }
+  });
+}
+
+async function upsertCustomer(userId, data) {
+  const existingCustomer = await prisma.customer.findFirst({
     where: {
-      userId: user.id
+      userId,
+      phone: data.phone
     }
   });
 
-  const firstCustomer = await prisma.customer.create({
-    data: {
-      userId: user.id,
-      name: "Ahmet Yilmaz",
-      phone: "0555 123 45 67",
-      address: "Kadikoy / Istanbul",
-      note: "Kombi ve klima bakim musterisi"
-    }
-  });
-
-  const secondCustomer = await prisma.customer.create({
-    data: {
-      userId: user.id,
-      name: "Mavi Kose Cafe",
-      phone: "0216 555 12 34",
-      address: "Uskudar / Istanbul",
-      note: "Yogun donemlerde hizli servis istiyor"
-    }
-  });
-
-  const thirdCustomer = await prisma.customer.create({
-    data: {
-      userId: user.id,
-      name: "Gunes Apartmani",
-      phone: "0532 444 88 11",
-      address: "Atasehir / Istanbul",
-      note: "Aylik bakim anlasmasi potansiyeli"
-    }
-  });
-
-  await prisma.job.createMany({
-    data: [
-      {
-        customerId: firstCustomer.id,
-        title: "Kombi yillik bakim",
-        description: "Filtre temizligi, basinc kontrolu ve genel bakim",
-        status: "completed",
-        priority: "normal",
-        price: 1250,
-        paidAmount: 1250,
-        paymentStatus: "paid"
-      },
-      {
-        customerId: firstCustomer.id,
-        title: "Klima gaz kontrolu",
-        description: "Sogutma performansi dusuk, gaz ve kacak kontrolu yapilacak",
-        status: "in_progress",
-        priority: "high",
-        price: 1800,
-        paidAmount: 700,
-        paymentStatus: "partial"
-      },
-      {
-        customerId: secondCustomer.id,
-        title: "Endustriyel buzdolabi arizasi",
-        description: "Dolap yeterince sogutmuyor, acil kontrol gerekli",
-        status: "pending",
-        priority: "urgent",
-        price: 3200,
-        paidAmount: 0,
-        paymentStatus: "unpaid"
-      },
-      {
-        customerId: thirdCustomer.id,
-        title: "Hidrofor bakim kontrolu",
-        description: "Apartman hidrofor sistemi rutin kontrolu",
-        status: "pending",
-        priority: "normal",
-        price: 2400,
-        paidAmount: 0,
-        paymentStatus: "unpaid"
+  if (!existingCustomer) {
+    return prisma.customer.create({
+      data: {
+        userId,
+        ...data
       }
-    ]
+    });
+  }
+
+  return prisma.customer.update({
+    where: {
+      id: existingCustomer.id
+    },
+    data
+  });
+}
+
+async function upsertJob(data) {
+  return prisma.job.upsert({
+    where: {
+      requestCode: data.requestCode
+    },
+    create: data,
+    update: data
+  });
+}
+
+async function main() {
+  const user = await findOrCreateDemoUser();
+
+  const firstCustomer = await upsertCustomer(user.id, {
+    name: "Ahmet Yılmaz",
+    phone: "05551234567",
+    address: "Kadıköy / İstanbul",
+    note: "Kombi ve klima bakım müşterisi"
   });
 
-  console.log("Demo data hazir: " + demoEmail);
+  const secondCustomer = await upsertCustomer(user.id, {
+    name: "Mavi Köşe Cafe",
+    phone: "02165551234",
+    address: "Üsküdar / İstanbul",
+    note: "Yoğun dönemlerde hızlı servis istiyor"
+  });
+
+  const thirdCustomer = await upsertCustomer(user.id, {
+    name: "Güneş Apartmanı",
+    phone: "05324448811",
+    address: "Ataşehir / İstanbul",
+    note: "Aylık bakım anlaşması potansiyeli"
+  });
+
+  await upsertJob({
+    customerId: firstCustomer.id,
+    requestCode: "SD-100101",
+    source: "technician",
+    productCategory: "heating",
+    productBrand: "Demirdöküm",
+    productModel: "Nitromix",
+    title: "Kombi yıllık bakım",
+    description: "Filtre temizliği, basınç kontrolü ve genel bakım",
+    status: "completed",
+    priority: "normal",
+    price: 1250,
+    paidAmount: 1250,
+    paymentStatus: "paid"
+  });
+
+  await upsertJob({
+    customerId: firstCustomer.id,
+    requestCode: "SD-100102",
+    source: "customer",
+    productCategory: "cooling",
+    productBrand: "Vestel",
+    productModel: "Inverter",
+    title: "Klima soğutmuyor",
+    description: "Soğutma performansı düşük, gaz ve kaçak kontrolü yapılacak",
+    status: "in_progress",
+    priority: "high",
+    price: 1800,
+    paidAmount: 700,
+    paymentStatus: "partial"
+  });
+
+  await upsertJob({
+    customerId: secondCustomer.id,
+    requestCode: "SD-100103",
+    source: "customer",
+    productCategory: "white_goods",
+    productBrand: "Uğur",
+    productModel: "Endüstriyel",
+    title: "Buzdolabı arızası",
+    description: "Dolap yeterince soğutmuyor, acil kontrol gerekli",
+    status: "pending",
+    priority: "urgent",
+    price: 3200,
+    paidAmount: 0,
+    paymentStatus: "unpaid"
+  });
+
+  await upsertJob({
+    customerId: thirdCustomer.id,
+    requestCode: "SD-100104",
+    source: "technician",
+    productCategory: "other",
+    productBrand: "Apartman",
+    productModel: "Hidrofor",
+    title: "Hidrofor bakım kontrolü",
+    description: "Apartman hidrofor sistemi rutin kontrolü",
+    status: "pending",
+    priority: "normal",
+    price: 2400,
+    paidAmount: 0,
+    paymentStatus: "unpaid"
+  });
+
+  console.log("Demo data hazır: " + demoEmail + " / demo1234");
 }
 
 main()

@@ -1,58 +1,34 @@
-# Kullanılabilirlik Geliştirme Yol Haritası
+# Servis Defteri Ürün Durumu ve Yol Haritası
 
-Bu not, Dükkan Defteri'ni küçük servis işletmeleri için daha hızlı, anlaşılır ve hata toleranslı hale getirmek amacıyla hazırlanmıştır.
+## 1.2.0 ile Tamamlananlar
 
-## Uygulanan ilk iyileştirme
+- Müşteri ve usta için ayrı, mobil öncelikli giriş akışı
+- Üye olmadan arıza talebi oluşturma ve takip koduyla izleme
+- Web ve mobilde en fazla üç fotoğraf ekleme
+- Büyük fotoğrafları cihazda otomatik küçültme ve sıkıştırma
+- Müşteri, talep, randevu, öncelik ve ödeme yönetimi
+- Kısmi ödeme ve kalan tutar görünümü
+- Türkçe karakterleri ve tek harflik sorguları destekleyen arama
+- Bugün, açık, acil, ödeme bekleyen ve tamamlanan iş panoları
+- Web ve mobil CSV dışa aktarma
+- Mobil çevrimdışı önbellek, bağlantı durumu ve yeniden deneme
+- Mobil token'ı SecureStore içinde saklama
+- Geçmiş randevu ve alan uzunlukları için istemci + API doğrulaması
+- Kullanıcı bazlı veri izolasyonu ve public cevaplarda kişisel veri azaltma
+- API rate limit, 4 MB istek sınırı, güvenli loglama ve graceful shutdown
+- API, web, Android ve iOS için otomatik CI kontrolleri
 
-- Telefon alanı artık sadece rakam kabul eder.
-- Müşteri adı ve kayıt ekranındaki ad soyad alanı rakam kabul etmez.
-- Aynı kurallar API tarafında da doğrulanır.
+## Production İçin Öncelikli Sonraki Yatırımlar
 
-## Öncelik 1 - Formları daha güvenli ve rahat yapmak
+1. Render ücretsiz katmanından sürekli açık bir API planına geçmek. Bu, ilk girişteki soğuk başlangıç gecikmesini kaldırır.
+2. E-posta doğrulama ve parola sıfırlama eklemek. Şu an unutulan parola için self-servis kurtarma yoktur.
+3. İşletme/workspace ve çalışan rolleri eklemek. Mevcut model her usta hesabını ayrı veri sahibi kabul eder.
+4. Push bildirimleri eklemek. Yeni müşteri talebi, yaklaşan randevu ve geciken ödeme cihazdan bildirilebilir.
+5. Ödeme hareketleri tablosu eklemek. Mevcut sürüm toplam fiyat ve ödenen tutarı saklar; ayrı tahsilat geçmişi tutmaz.
+6. Takvim görünümü ve uygun randevu aralıkları eklemek.
+7. OpenAPI dokümanı, merkezi hata izleme ve uptime alarmı eklemek.
+8. Android Play Store ve iOS TestFlight/App Store dağıtımını tamamlamak.
 
-- Alan bazlı hata mesajları ekle: Hata sadece üstte genel mesaj olarak değil, ilgili alanın altında da görünmeli.
-- Telefonu okunabilir göster: Kullanıcı düz rakam girsin, listede `0555 123 45 67` gibi daha rahat okunsun.
-- Kaydetme sırasında butonları kilitle: Çift tıklama ile iki kayıt oluşmasını engelle.
-- Kayıt başarılı olunca kısa başarı bildirimi göster ve formu yumuşak şekilde sıfırla.
+## Ürün Kararı
 
-Neden: GOV.UK form rehberi hem client hem server doğrulaması gerektiğini, hataların ilgili alan yanında gösterilmesinin kullanıcıya toparlanma alanı verdiğini vurgular.
-
-## Öncelik 2 - Günlük iş akışını hızlandırmak
-
-- Müşteri kartından doğrudan iş ekleme: Kullanıcı müşteri seçmek zorunda kalmadan o müşteriye iş açabilsin.
-- İş durumunu tek tıkla değiştirme: `Bekliyor`, `Devam ediyor`, `Tamamlandı` kontrolleri rozet/menü olarak daha hızlı kullanılmalı.
-- Son kullanılan müşteri veya son müşteri araması hatırlanmalı.
-- Liste üstünde hızlı işlem sayacı: Bugün randevusu olanlar, gecikenler, tahsilatı bekleyenler.
-
-Neden: Nielsen Norman Group'un sezgisel tasarım ilkelerinde sistem durumunun görünür olması, kullanıcının hafıza yükünün azaltılması ve sık kullanılan işlemlerin hızlandırılması öne çıkar.
-
-## Öncelik 3 - Paneli daha anlaşılır yapmak
-
-- İşleri sekmelere böl: `Açık İşler`, `Bugün`, `Tamamlananlar`, `Ödeme Bekleyenler`.
-- Boş durumları aksiyonlu yap: `İlk müşterini ekle` veya `Bu müşteriye iş aç` gibi doğrudan butonlar.
-- Kartlarda bilgiyi önceliklendir: Başlık, müşteri, randevu, durum ve fiyat görünür; açıklama gerektiğinde genişlesin.
-- Arama sonuçlarını vurgula: Aranan kelime müşteri/iş listesinde belirginleşsin.
-
-## Öncelik 4 - Erişilebilirlik ve mobil kullanım
-
-- Klavye ile tüm iş akışları tamamlanabilmeli.
-- Odak çizgileri tüm buton/inputlarda görünür olmalı.
-- Mobilde form ve liste sıralaması iş akışına göre düzenlenmeli: önce özet, sonra hızlı arama, sonra kayıtlar.
-- Hata ve başarı mesajları ekran okuyucuya uygun `aria-live` alanıyla duyurulmalı.
-
-Neden: W3C WAI, erişilebilirliğin farklı cihazlar, giriş yöntemleri ve kullanıcı yetenekleri için kaliteyi artırdığını belirtir.
-
-## Öncelik 5 - Ürünleşme adımları
-
-- Takvim görünümü ekle.
-- Müşteri detay sayfası ekle.
-- Kısmi ödeme tutarı ve ödeme geçmişi ekle.
-- CSV/Excel dışa aktarma ekle.
-- Basit rol yapısı ekle: işletme sahibi, çalışan.
-- OpenAPI dokümantasyonu ekle.
-
-## Kaynaklar
-
-- Nielsen Norman Group - 10 Usability Heuristics: https://www.nngroup.com/articles/ten-usability-heuristics/
-- GOV.UK Design System - Recover from validation errors: https://design-system.service.gov.uk/patterns/validation/
-- W3C WAI - Introduction to Web Accessibility: https://www.w3.org/WAI/fundamentals/accessibility-intro/
+Ana deneyim mobil uygulamadır. Web sürümü masaüstünde yoğun kayıt yönetimi ve müşteriye bağlantı gönderme için korunur. Aynı API ve veri modeli iki istemci tarafından kullanılmaya devam eder; iki ayrı backend oluşturulmaz.
