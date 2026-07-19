@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Camera, ClipboardPlus, Search } from "lucide-react";
 import { createPublicRequest, getPublicRequest } from "../services/api";
 import { compressImageFile } from "../imageUtils";
 
@@ -38,6 +39,7 @@ const initialTrackingForm = {
 };
 
 function CustomerPortal() {
+  const [portalMode, setPortalMode] = useState("create");
   const [requestForm, setRequestForm] = useState(initialRequestForm);
   const [trackingForm, setTrackingForm] = useState(initialTrackingForm);
   const [createdRequest, setCreatedRequest] = useState(null);
@@ -132,6 +134,7 @@ function CustomerPortal() {
       const response = await createPublicRequest(requestForm);
       setCreatedRequest(response.data);
       setTrackedRequest(null);
+      setPortalMode("track");
       setTrackingForm({
         requestCode: response.data.requestCode,
         phone: requestForm.phone
@@ -172,10 +175,35 @@ function CustomerPortal() {
   return (
     <section className="auth-card customer-portal">
       <p className="eyebrow">Müşteri Alanı</p>
-      <h1>Arıza Talebi Aç</h1>
+      <h1>{portalMode === "create" ? "Arıza Talebi Aç" : "Talebini Takip Et"}</h1>
       <p className="hero-text">
-        Cihazını seç, arızayı yaz, takip kodunla süreci buradan izle.
+        {portalMode === "create"
+          ? "Cihazını seç, arızayı anlat ve servis talebini oluştur."
+          : "Takip kodunla servis sürecini ve randevu durumunu görüntüle."}
       </p>
+
+      <div className="portal-mode-switch" role="tablist" aria-label="Müşteri işlemleri">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={portalMode === "create"}
+          className={portalMode === "create" ? "is-active" : ""}
+          onClick={() => setPortalMode("create")}
+        >
+          <ClipboardPlus size={18} aria-hidden="true" />
+          Yeni Talep
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={portalMode === "track"}
+          className={portalMode === "track" ? "is-active" : ""}
+          onClick={() => setPortalMode("track")}
+        >
+          <Search size={18} aria-hidden="true" />
+          Talep Takibi
+        </button>
+      </div>
 
       {message ? (
         <p className="message" role="status" aria-live="polite">
@@ -183,7 +211,8 @@ function CustomerPortal() {
         </p>
       ) : null}
 
-      <form className="auth-form" onSubmit={handleCreateRequest}>
+      {portalMode === "create" ? (
+      <form className="auth-form portal-request-form" onSubmit={handleCreateRequest}>
         <div className="form-grid two-columns">
           <label>
             Ad Soyad
@@ -300,7 +329,8 @@ function CustomerPortal() {
             }`}
             htmlFor="customer-request-photos"
           >
-            {photoBusy ? "Fotoğraflar hazırlanıyor..." : "Fotoğraf Seç"}
+            <Camera size={18} aria-hidden="true" />
+            {photoBusy ? "Fotoğraflar hazırlanıyor..." : "Fotoğraf Ekle"}
           </label>
           {requestForm.photos.length > 0 ? (
             <div className="portal-photo-grid">
@@ -329,9 +359,11 @@ function CustomerPortal() {
           {submitting ? "Talep oluşturuluyor..." : "Talep Oluştur"}
         </button>
       </form>
+      ) : null}
 
+      {portalMode === "track" ? (
       <form className="tracking-form" onSubmit={handleTrackRequest}>
-        <h2>Talep Takibi</h2>
+        <p className="tracking-help">Takip kodunu ve talebi açarken kullandığın telefonu gir.</p>
         <div className="form-grid two-columns">
           <label>
             Takip Kodu
@@ -363,9 +395,11 @@ function CustomerPortal() {
           </label>
         </div>
         <button type="submit" className="secondary-button" disabled={tracking}>
+          <Search size={18} aria-hidden="true" />
           {tracking ? "Kontrol ediliyor..." : "Durumu Göster"}
         </button>
       </form>
+      ) : null}
 
       {result ? (
         <div className="portal-result">

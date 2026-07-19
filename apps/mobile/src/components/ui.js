@@ -87,10 +87,15 @@ const styles = StyleSheet.create({
   card: {
     gap: 12,
     borderWidth: 1,
-    borderColor: "#d9e0ea",
+    borderColor: "#dce2e7",
     borderRadius: 8,
     padding: 14,
-    backgroundColor: "#ffffff"
+    backgroundColor: "#ffffff",
+    shadowColor: "#17211f",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.045,
+    shadowRadius: 8,
+    elevation: 1
   },
   message: {
     borderWidth: 1,

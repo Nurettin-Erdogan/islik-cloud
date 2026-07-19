@@ -26,6 +26,7 @@ function CustomerForm({
   return (
     <form className="panel" onSubmit={onSubmit}>
       <h2>{editingCustomerId ? "Müşteri Düzenle" : "Müşteri Ekle"}</h2>
+      <p className="panel-intro">İletişim bilgilerini ekle; ardından müşteri kartından tek dokunuşla talep aç.</p>
 
       <label>
         Ad Soyad

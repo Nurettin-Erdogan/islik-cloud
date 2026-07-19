@@ -39,6 +39,12 @@ function JobForm({
   return (
     <form className="panel" onSubmit={onSubmit}>
       <h2>{editingJobId ? "Talep Düzenle" : "Talep Oluştur"}</h2>
+      <p className="panel-intro">Servis kaydını üç kısa adımda tamamla.</p>
+
+      <div className="form-section-heading">
+        <span>1</span>
+        <strong>Müşteri ve cihaz</strong>
+      </div>
 
       <label>
         Müşteri
@@ -96,6 +102,11 @@ function JobForm({
         </label>
       </div>
 
+      <div className="form-section-heading">
+        <span>2</span>
+        <strong>Arıza ve randevu</strong>
+      </div>
+
       <label>
         Talep Başlığı
         <input
@@ -118,6 +129,11 @@ function JobForm({
           maxLength={2000}
         />
       </label>
+
+      <div className="form-section-heading">
+        <span>3</span>
+        <strong>Durum ve ödeme</strong>
+      </div>
 
       <label>
         Tahmini Ücret

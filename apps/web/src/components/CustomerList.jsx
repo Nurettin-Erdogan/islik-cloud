@@ -49,6 +49,7 @@ function CustomerList({ customers, onEdit, onCreateJob, onDelete }) {
                     className="ghost-button"
                     onClick={() => onCreateJob(customer)}
                   >
+                    <ClipboardPlus size={16} aria-hidden="true" />
                     Talep Aç
                   </button>
                 ) : null}
@@ -58,6 +59,7 @@ function CustomerList({ customers, onEdit, onCreateJob, onDelete }) {
                   className="ghost-button"
                   onClick={() => onEdit(customer)}
                 >
+                  <Pencil size={16} aria-hidden="true" />
                   Düzenle
                 </button>
 
@@ -66,6 +68,7 @@ function CustomerList({ customers, onEdit, onCreateJob, onDelete }) {
                   className="danger-button"
                   onClick={() => onDelete(customer)}
                 >
+                  <Trash2 size={16} aria-hidden="true" />
                   Sil
                 </button>
               </div>
@@ -78,3 +81,4 @@ function CustomerList({ customers, onEdit, onCreateJob, onDelete }) {
 }
 
 export default CustomerList;
+import { ClipboardPlus, Pencil, Trash2 } from "lucide-react";

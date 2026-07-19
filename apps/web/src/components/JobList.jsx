@@ -145,6 +145,7 @@ function JobList({
                     className="ghost-button"
                     onClick={() => onEdit(job)}
                   >
+                    <Pencil size={16} aria-hidden="true" />
                     Düzenle
                   </button>
 
@@ -154,6 +155,7 @@ function JobList({
                     disabled={job.status === "completed"}
                     onClick={() => onMarkCompleted(job)}
                   >
+                    <BadgeCheck size={16} aria-hidden="true" />
                     Tamamlandı
                   </button>
 
@@ -163,6 +165,7 @@ function JobList({
                     disabled={job.paymentStatus === "paid"}
                     onClick={() => onMarkPaid(job)}
                   >
+                    <Banknote size={16} aria-hidden="true" />
                     Ödendi
                   </button>
 
@@ -171,6 +174,7 @@ function JobList({
                     className="danger-button"
                     onClick={() => onDelete(job)}
                   >
+                    <Trash2 size={16} aria-hidden="true" />
                     Sil
                   </button>
                 </div>
@@ -184,3 +188,4 @@ function JobList({
 }
 
 export default JobList;
+import { BadgeCheck, Banknote, Pencil, Trash2 } from "lucide-react";

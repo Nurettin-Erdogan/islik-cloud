@@ -1232,12 +1232,17 @@ function App() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#111827" />
+      <StatusBar barStyle="light-content" backgroundColor="#17211f" />
       <View style={styles.appShell}>
         <View style={styles.appHeader}>
-          <View>
-            <Text style={styles.appEyebrow}>Servis Defteri</Text>
-            <Text style={styles.appTitle}>{getActiveTitle(activeTab)}</Text>
+          <View style={styles.appHeaderIdentity}>
+            <View style={styles.appHeaderMark}>
+              <ClipboardList size={21} color="#0b6258" strokeWidth={2.5} />
+            </View>
+            <View>
+              <Text style={styles.appEyebrow}>Servis Defteri</Text>
+              <Text style={styles.appTitle}>{getActiveTitle(activeTab)}</Text>
+            </View>
           </View>
           <Pressable
             style={[styles.headerButton, loading && styles.headerButtonDisabled]}
@@ -1504,7 +1509,7 @@ function App() {
         <Card>
           <Text style={styles.cardTitle}>Hesap</Text>
           <Text style={styles.bodyText}>{user?.name || "Usta"}</Text>
-          <Text style={styles.muted}>{user?.email}</Text>
+          <Text style={styles.muted}>Servis hesabı ve uygulama seçenekleri</Text>
           <SmallButton title="Verileri Paylaş" onPress={shareServiceData} />
         </Card>
         {__DEV__ ? (
@@ -1596,7 +1601,7 @@ function getActiveTitle(activeTab) {
     customers: "Müşteriler",
     jobs: "Talepler",
     search: "Talep Ara",
-    settings: "Ayarlar"
+    settings: "Hesabım"
   };
   return titles[activeTab] || "Servis Defteri";
 }
@@ -2088,7 +2093,7 @@ function BottomNav({ activeTab, onChange }) {
     { value: "customers", label: "Müşteri", icon: Users },
     { value: "jobs", label: "Talep", icon: ClipboardList },
     { value: "search", label: "Ara", icon: SearchIcon },
-    { value: "settings", label: "Ayarlar", icon: SettingsIcon }
+    { value: "settings", label: "Hesap", icon: SettingsIcon }
   ];
 
   return (
@@ -2106,7 +2111,7 @@ function BottomNav({ activeTab, onChange }) {
             accessibilityLabel={tab.label}
             accessibilityState={{ selected: active }}
           >
-            <Icon size={20} color={active ? "#0f766e" : "#cbd5e1"} strokeWidth={2.3} />
+            <Icon size={20} color={active ? "#0b6258" : "#66716f"} strokeWidth={2.3} />
             <Text style={[styles.navText, active && styles.navTextActive]}>{tab.label}</Text>
           </Pressable>
         );
@@ -2204,13 +2209,28 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc"
   },
   appHeader: {
-    minHeight: 82,
+    minHeight: 88,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: "#111827",
+    backgroundColor: "#17211f",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between"
+  },
+  appHeaderIdentity: {
+    minWidth: 0,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11
+  },
+  appHeaderMark: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#dff4ed"
   },
   appEyebrow: {
     color: "#99f6e4",
@@ -2562,8 +2582,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "#111827"
+    borderTopColor: "#d9e0e5",
+    backgroundColor: "#ffffff",
+    shadowColor: "#17211f",
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 12
   },
   navItem: {
     flex: 1,
@@ -2574,15 +2599,15 @@ const styles = StyleSheet.create({
     gap: 3
   },
   navItemActive: {
-    backgroundColor: "#f0fdfa"
+    backgroundColor: "#eaf7f2"
   },
   navText: {
-    color: "#cbd5e1",
+    color: "#66716f",
     fontSize: 11,
     fontWeight: "900"
   },
   navTextActive: {
-    color: "#0f766e"
+    color: "#0b6258"
   },
   pickerCount: {
     color: "#64748b",
