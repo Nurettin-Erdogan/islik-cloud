@@ -16,27 +16,34 @@ function FiltersPanel({
       <div className="panel-heading">
         <h2>Talep Arama</h2>
         <button type="button" className="secondary-button" onClick={onResetFilters}>
+          <X size={16} aria-hidden="true" />
           Temizle
         </button>
       </div>
 
       <div className="filter-grid">
-        <label>
+        <label className="search-field">
           Müşteri
-          <input
-            value={customerSearch}
-            onChange={(event) => onCustomerSearchChange(event.target.value)}
-            placeholder="Ad, telefon, adres veya not ara"
-          />
+          <span className="input-with-icon">
+            <Search size={18} aria-hidden="true" />
+            <input
+              value={customerSearch}
+              onChange={(event) => onCustomerSearchChange(event.target.value)}
+              placeholder="Ad, telefon, adres veya not ara"
+            />
+          </span>
         </label>
 
-        <label>
+        <label className="search-field">
           Talep
-          <input
-            value={jobSearch}
-            onChange={(event) => onJobSearchChange(event.target.value)}
-            placeholder="Takip kodu, ürün, arıza veya müşteri ara"
-          />
+          <span className="input-with-icon">
+            <Search size={18} aria-hidden="true" />
+            <input
+              value={jobSearch}
+              onChange={(event) => onJobSearchChange(event.target.value)}
+              placeholder="Takip kodu, ürün, arıza veya müşteri ara"
+            />
+          </span>
         </label>
 
         <label>
@@ -76,3 +83,4 @@ function FiltersPanel({
 }
 
 export default FiltersPanel;
+import { Search, X } from "lucide-react";

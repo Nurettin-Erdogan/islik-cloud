@@ -1,4 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  CalendarDays,
+  ClipboardList,
+  ClipboardPlus,
+  Download,
+  LayoutDashboard,
+  LogOut,
+  Search,
+  UserPlus,
+  Users,
+  Wrench
+} from "lucide-react";
 import "./App.css";
 import AuthScreen from "./components/AuthScreen";
 import CustomerForm from "./components/CustomerForm";
@@ -285,23 +297,28 @@ function App() {
   const pageMeta = {
     today: {
       eyebrow: "Plan",
-      title: "Bugünün İşleri"
+      title: "Bugünün İşleri",
+      description: "Randevuları, geciken işleri ve tahsilat bekleyen talepleri tek yerden yönet."
     },
     overview: {
       eyebrow: "Servis Defteri",
-      title: "Özet"
+      title: "İşletme Özeti",
+      description: "Müşterilerinin, servis taleplerinin ve tahsilatlarının güncel görünümü."
     },
     customers: {
       eyebrow: "Müşteri",
-      title: editingCustomerId ? "Müşteri Düzenle" : "Müşteriler"
+      title: editingCustomerId ? "Müşteri Düzenle" : "Müşteriler",
+      description: "Müşteri bilgilerini bul, güncelle veya doğrudan yeni servis talebi aç."
     },
     jobs: {
       eyebrow: "Talep",
-      title: editingJobId ? "Talep Düzenle" : "Talep Oluştur"
+      title: editingJobId ? "Talep Düzenle" : "Servis Talepleri",
+      description: "Cihaz, randevu, işlem durumu ve ödemeyi birlikte takip et."
     },
     search: {
       eyebrow: "Arama",
-      title: "Talep Ara"
+      title: "Kayıtlarda Ara",
+      description: "Müşteri, telefon, takip kodu, ürün veya ödeme durumuyla hızlıca sonuç bul."
     }
   };
   const currentPage = pageMeta[activeView] || pageMeta.overview;
@@ -309,27 +326,32 @@ function App() {
     {
       id: "today",
       label: "Bugün",
-      meta: "Randevu ve acil işler"
+      meta: "Randevu ve acil işler",
+      icon: CalendarDays
     },
     {
       id: "overview",
       label: "Özet",
-      meta: "Genel durum"
+      meta: "Genel durum",
+      icon: LayoutDashboard
     },
     {
       id: "customers",
       label: "Müşteri",
-      meta: "Kayıt ve düzenleme"
+      meta: "Kayıt ve düzenleme",
+      icon: Users
     },
     {
       id: "jobs",
       label: "Talep",
-      meta: "Ürün, randevu ve ödeme"
+      meta: "Ürün, randevu ve ödeme",
+      icon: ClipboardList
     },
     {
       id: "search",
       label: "Ara",
-      meta: "Kod, müşteri ve durum"
+      meta: "Kod, müşteri ve durum",
+      icon: Search
     }
   ];
   function openView(viewId) {
@@ -709,18 +731,23 @@ function App() {
         />
         <section className="action-strip" aria-label="Hızlı işlemler">
           <button type="button" onClick={() => openView("today")}>
+            <CalendarDays size={19} aria-hidden="true" />
             Bugünü Aç
           </button>
           <button type="button" onClick={openCustomerEntry}>
+            <UserPlus size={19} aria-hidden="true" />
             Müşteri Ekle
           </button>
           <button type="button" onClick={openJobEntry}>
+            <ClipboardPlus size={19} aria-hidden="true" />
             Talep Aç
           </button>
           <button type="button" onClick={() => openView("search")}>
+            <Search size={19} aria-hidden="true" />
             Talep Ara
           </button>
           <button type="button" onClick={handleExportData}>
+            <Download size={19} aria-hidden="true" />
             CSV İndir
           </button>
         </section>
@@ -936,7 +963,7 @@ function App() {
     <main className="app-shell">
       <aside className="app-sidebar">
         <div className="sidebar-brand">
-          <span className="brand-mark">S</span>
+          <span className="brand-mark"><Wrench size={22} aria-hidden="true" /></span>
           <div>
             <strong>Servis Defteri</strong>
             <small>Talep takibi</small>
@@ -951,14 +978,18 @@ function App() {
               aria-current={activeView === item.id ? "page" : undefined}
               onClick={() => openView(item.id)}
             >
-              <span className="sidebar-link-main">{item.label}</span>
-              <small>{item.meta}</small>
+              <item.icon className="sidebar-link-icon" size={20} aria-hidden="true" />
+              <span className="sidebar-link-copy">
+                <span className="sidebar-link-main">{item.label}</span>
+                <small>{item.meta}</small>
+              </span>
             </button>
           ))}
         </nav>
         <div className="sidebar-account">
           <InstallAppButton />
           <button type="button" className="secondary-button" onClick={handleLogout}>
+            <LogOut size={18} aria-hidden="true" />
             Çıkış Yap
           </button>
         </div>
@@ -971,7 +1002,13 @@ function App() {
           </div>
           <InstallAppButton className="mobile-install-button" />
         </header>
-        <DashboardHeader eyebrow={currentPage.eyebrow} title={currentPage.title} />
+        <DashboardHeader
+          eyebrow={currentPage.eyebrow}
+          title={currentPage.title}
+          description={currentPage.description}
+          onAddCustomer={openCustomerEntry}
+          onAddJob={openJobEntry}
+        />
         {message ? (
           <p className="message" role="status" aria-live="polite">
             {message}

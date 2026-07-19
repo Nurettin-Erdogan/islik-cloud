@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BriefcaseBusiness, UserRound, Wrench } from "lucide-react";
 import CustomerPortal from "./CustomerPortal";
 import InstallAppButton from "./InstallAppButton";
 import { login, register, warmUpApi } from "../services/api";
@@ -207,12 +208,22 @@ function AuthScreen({ onAuthSuccess, initialMessage = "" }) {
   return (
     <main className="auth-shell">
       <section className="auth-entry">
+        <header className="entry-brand">
+          <span className="entry-brand-mark" aria-hidden="true">
+            <Wrench size={22} strokeWidth={2.4} />
+          </span>
+          <div>
+            <strong>Servis Defteri</strong>
+            <small>Talep, randevu ve servis takibi</small>
+          </div>
+        </header>
         <div className="auth-entry-switch" aria-label="Giriş türü">
           <button
             type="button"
             className={`auth-entry-button ${entryMode === "customer" ? "is-active" : ""}`}
             onClick={() => setEntryMode("customer")}
           >
+            <UserRound size={18} aria-hidden="true" />
             Müşteri
           </button>
           <button
@@ -220,6 +231,7 @@ function AuthScreen({ onAuthSuccess, initialMessage = "" }) {
             className={`auth-entry-button ${entryMode === "technician" ? "is-active" : ""}`}
             onClick={() => setEntryMode("technician")}
           >
+            <BriefcaseBusiness size={18} aria-hidden="true" />
             Usta
           </button>
         </div>
