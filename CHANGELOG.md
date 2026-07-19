@@ -1,5 +1,14 @@
 # Değişiklik Günlüğü
 
+## 1.2.1 - 2026-07-19
+
+### İyileştirildi
+
+- Expo SDK 54 güvenli yama sürümü `54.0.36` ile eşitlendi
+- Android sürüm kodu ve iOS build numarası yeni mağaza paketleri için artırıldı
+- Android release paketinden mikrofon ve ekran üstü pencere izinleri çıkarıldı
+- Dependabot, Expo ve Prisma büyük sürümlerini uyumsuz tekil PR'lar olarak açmayacak şekilde düzenlendi
+
 ## 1.2.0 - 2026-07-14
 
 ### Yeni
