@@ -40,6 +40,9 @@ jobs:
       - name: Validate Expo project
         run: npm run doctor
 
+      - name: Test mobile business rules
+        run: npm test
+
       - name: Export Android bundle
         run: npx expo export --platform android --output-dir .ci-export/android
 
