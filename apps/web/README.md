@@ -2,6 +2,8 @@
 
 Servis Defteri, müşteri arıza talebi açma ve usta servis takibi için hazırlanmış React + Vite arayüzüdür.
 
+Geliştirme ve test için Node.js `22.22.2+` (22 LTS), `24.15.0+` veya 26+ kullan.
+
 ## Komutlar
 
 ```bash
