@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - "apps/api/**"
+      - "render.yaml"
       - ".github/workflows/api-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "apps/api/**"
+      - "render.yaml"
       - ".github/workflows/api-ci.yml"
 
 permissions:
