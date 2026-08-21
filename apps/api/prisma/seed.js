@@ -1,18 +1,9 @@
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
+const { requireDemoPassword } = require("./seed-config");
 
 const prisma = new PrismaClient();
 const demoEmail = process.env.DEMO_EMAIL || "demo@islik.dev";
-
-function requireDemoPassword() {
-  const demoPassword = String(process.env.DEMO_PASSWORD || "");
-
-  if (demoPassword.length < 12) {
-    throw new Error("DEMO_PASSWORD must contain at least 12 characters.");
-  }
-
-  return demoPassword;
-}
 
 async function upsertDemoUser() {
   const passwordHash = await bcrypt.hash(requireDemoPassword(), 12);
