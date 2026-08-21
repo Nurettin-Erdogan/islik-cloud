@@ -225,3 +225,7 @@ Müşteri ve talep endpointleri JWT ister. Her sorgu giriş yapan kullanıcıya 
 ## Yayın
 
 Yayın öncesi bütün adımlar [deploy-checklist.md](docs/deploy-checklist.md) içinde, cihaz ve tarayıcı kabul senaryoları ise [manual-test-plan.txt](docs/manual-test-plan.txt) içindedir.
+
+## Lisans
+
+Bu proje [MIT Lisansı](LICENSE) ile lisanslanmıştır.
