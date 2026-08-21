@@ -50,4 +50,12 @@ const testEnvironment = {
 };
 
 run(process.execPath, [prismaCli, "migrate", "deploy"], testEnvironment);
-run(process.execPath, ["--test", path.join(__dirname, "api.test.js")], testEnvironment);
+run(
+  process.execPath,
+  [
+    "--test",
+    path.join(__dirname, "api.test.js"),
+    path.join(__dirname, "seed-config.test.js")
+  ],
+  testEnvironment
+);

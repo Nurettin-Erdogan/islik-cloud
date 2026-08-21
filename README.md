@@ -152,6 +152,8 @@ DATABASE_URL="postgresql://islik:islik_password@localhost:5432/islik_cloud"
 JWT_SECRET="yalnizca-yerel-gelistirme-icin-guclu-bir-secret"
 CORS_ORIGIN="http://localhost:5173"
 PUBLIC_SERVICE_OWNER_EMAIL="usta@example.com"
+DEMO_EMAIL="demo@islik.dev"
+DEMO_PASSWORD=""
 ```
 
 Web için `apps/web/.env`:
@@ -167,6 +169,8 @@ EXPO_PUBLIC_API_URL="https://islik-cloud-api.onrender.com"
 ```
 
 `PUBLIC_SERVICE_OWNER_EMAIL`, müşterilerin üye olmadan açtığı taleplerin hangi usta hesabına düşeceğini belirler. Gerçek secret ve parolalar repoya eklenmemelidir.
+
+İsteğe bağlı demo verisini oluşturmak için repoya yazılmamış, en az 12 karakterlik bir `DEMO_PASSWORD` tanımlayıp `npm run seed` çalıştırın. Seed komutu parolayı çıktı olarak yazmaz ve mevcut demo kullanıcısının parolasını verilen değerle yeniler. Production ortamında demo seed çalıştırılmamalıdır.
 
 ## Testler
 
