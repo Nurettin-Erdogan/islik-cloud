@@ -4,22 +4,31 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const demoEmail = process.env.DEMO_EMAIL || "demo@islik.dev";
 
-async function findOrCreateDemoUser() {
-  const existingUser = await prisma.user.findUnique({
-    where: {
-      email: demoEmail
-    }
-  });
+function requireDemoPassword() {
+  const demoPassword = String(process.env.DEMO_PASSWORD || "");
 
-  if (existingUser) {
-    return existingUser;
+  if (demoPassword.length < 12) {
+    throw new Error("DEMO_PASSWORD must contain at least 12 characters.");
   }
 
-  return prisma.user.create({
-    data: {
+  return demoPassword;
+}
+
+async function upsertDemoUser() {
+  const passwordHash = await bcrypt.hash(requireDemoPassword(), 12);
+
+  return prisma.user.upsert({
+    where: {
+      email: demoEmail
+    },
+    update: {
+      name: "Demo Usta",
+      passwordHash
+    },
+    create: {
       email: demoEmail,
       name: "Demo Usta",
-      passwordHash: await bcrypt.hash("demo1234", 12)
+      passwordHash
     }
   });
 }
@@ -60,7 +69,7 @@ async function upsertJob(data) {
 }
 
 async function main() {
-  const user = await findOrCreateDemoUser();
+  const user = await upsertDemoUser();
 
   const firstCustomer = await upsertCustomer(user.id, {
     name: "Ahmet Yılmaz",
@@ -147,7 +156,7 @@ async function main() {
     paymentStatus: "unpaid"
   });
 
-  console.log("Demo data hazır: " + demoEmail + " / demo1234");
+  console.log("Demo data hazır: " + demoEmail);
 }
 
 main()
