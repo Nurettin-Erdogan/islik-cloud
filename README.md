@@ -18,6 +18,10 @@ Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustal
   <a href="#testler">Testler</a>
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/customer-request.png" alt="Servis Defteri müşteri servis talebi ekranı" width="900">
+</p>
+
 ## Portföy özeti
 
 | | |
