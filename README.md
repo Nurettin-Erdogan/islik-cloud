@@ -1,13 +1,37 @@
 # Servis Defteri
 
+<p align="center">
+  <a href="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/api-ci.yml"><img src="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/api-ci.yml/badge.svg?branch=main" alt="API CI"></a>
+  <a href="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/web-ci.yml"><img src="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/web-ci.yml/badge.svg?branch=main" alt="Web CI"></a>
+  <a href="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/mobile-ci.yml"><img src="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/mobile-ci.yml/badge.svg?branch=main" alt="Mobil CI"></a>
+</p>
+
 Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustaların ise müşteri, randevu, iş ve ödeme süreçlerini yönettiği web ve mobil uygulamadır.
+
+<p align="center">
+  <a href="https://islik-cloud.vercel.app/"><strong>Canlı web uygulamasını aç →</strong></a>
+  &nbsp;·&nbsp;
+  <a href="docs/">Teknik belgeler</a>
+  &nbsp;·&nbsp;
+  <a href="#testler">Testler</a>
+</p>
+
+## Portföy özeti
+
+| | |
+| --- | --- |
+| **Problem** | Küçük servis işletmelerinde müşteri, randevu, iş emri ve ödeme takibinin farklı kanallara dağılması |
+| **Çözüm** | Aynı iş akışını React web, Expo mobil ve Express API üzerinde birleştiren uçtan uca ürün |
+| **Zor mühendislik kararları** | Mobil güvenli oturum taşıma, çevrimdışı önbellek, fotoğraf sıkıştırma, atomik ödeme/iş akışları ve üretim ortamı dayanıklılığı |
+| **Doğrulama** | API, web, Android ve iOS için bağımsız GitHub Actions kontrolleri; Supertest ve Node.js testleri |
+
+Bu proje; yalnızca arayüz değil, veri modeli, API güvenliği, mobil dayanıklılık, CI ve bulut dağıtımıyla birlikte çalışan bir ürünü uçtan uca geliştirebildiğimi gösterir.
 
 ## Canlı Sistem
 
 - Web: https://islik-cloud.vercel.app
 - API: https://islik-cloud-api.onrender.com
 - Sağlık: https://islik-cloud-api.onrender.com/health
-- Hazırlık: https://islik-cloud-api.onrender.com/ready
 
 Render ücretsiz planda uykuya geçebildiği için ilk bulut isteği zaman zaman gecikebilir. Uygulama bu durum için uzun istek zaman aşımı, bağlantı durumu ve yeniden deneme akışı içerir.
 
