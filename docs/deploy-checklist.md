@@ -41,6 +41,15 @@ GET /ready
 
 `/health` API işleminin, `/ready` ise veritabanı bağlantısının hazır olduğunu doğrular. İkisi de `200` dönmeden frontend yayınını tamamlanmış sayma.
 
+Canlı API, güvenlik başlıkları ve CORS reddini tek komutla doğrulamak için:
+
+```bash
+cd apps/api
+npm run smoke:production
+```
+
+Komut varsayılan olarak `https://islik-cloud-api.onrender.com` adresini kullanır. Başka bir ortam için `SMOKE_BASE_URL`, uzun süren cold start için `SMOKE_TIMEOUT_MS` tanımlanabilir. Aynı kontrol GitHub Actions içindeki **Production Smoke Test** workflow'undan elle de başlatılabilir.
+
 ## 3. Web Ortamı
 
 Vercel ortam değişkeni:
@@ -103,7 +112,7 @@ Detaylı senaryolar `docs/manual-test-plan.txt` içindedir.
 
 - GitHub Actions içindeki API, Web ve Mobile CI yeşil olmalı.
 - Vercel ve Render deploy loglarında hata olmamalı.
-- Canlı `/ready` çağrısı `200` dönmeli.
+- GitHub Actions içindeki **Production Smoke Test** elle çalıştırılmalı ve yeşil olmalı.
 - Vercel müşteri talebi ve usta giriş akışı canlı API ile denenmeli.
 - Yeni APK sürüm, paket adı ve bulut API adresi kontrol edilmeli.
 - Hata halinde son çalışan commit/deploy sürümüne dönülmeli; migration geri alınmadan önce veritabanı yedeği kullanılmalı.
