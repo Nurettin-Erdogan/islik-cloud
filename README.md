@@ -11,6 +11,8 @@ Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustal
 <p align="center">
   <a href="https://islik-cloud.vercel.app/"><strong>Canlı web uygulamasını aç →</strong></a>
   &nbsp;·&nbsp;
+  <a href="docs/demo-guide.md"><strong>3 dakikalık demo</strong></a>
+  &nbsp;·&nbsp;
   <a href="docs/">Teknik belgeler</a>
   &nbsp;·&nbsp;
   <a href="#testler">Testler</a>
