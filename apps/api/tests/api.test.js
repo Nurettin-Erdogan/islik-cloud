@@ -72,6 +72,7 @@ test("health endpoint returns ok", async () => {
 
   assert.equal(response.body.status, "ok");
   assert.equal(response.body.service, "islik-cloud-api");
+  assert.equal(response.body.revision, process.env.APP_GIT_COMMIT);
   assert.equal(response.headers["x-powered-by"], undefined);
   assert.equal(response.headers["cache-control"], "no-store");
   assert.equal(response.headers["x-content-type-options"], "nosniff");
@@ -82,6 +83,7 @@ test("readiness endpoint confirms the database connection", async () => {
 
   assert.equal(response.body.status, "ready");
   assert.equal(response.body.service, "islik-cloud-api");
+  assert.equal(response.body.revision, process.env.APP_GIT_COMMIT);
 });
 
 test("auth register, login and me work", async () => {
@@ -814,3 +816,4 @@ test("users can only access their own customers and jobs", async () => {
     })
     .expect(400);
 });
+

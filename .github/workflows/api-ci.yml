@@ -44,6 +44,8 @@ jobs:
       DATABASE_URL: postgresql://islik:islik_password@localhost:5432/islik_cloud
       JWT_SECRET: ci-test-secret
       AUTH_RATE_LIMIT_MAX: 100
+      APP_GIT_COMMIT: ${{ github.sha }}
+      SMOKE_EXPECTED_GIT_COMMIT: ${{ github.sha }}
 
     steps:
       - name: Checkout
@@ -85,3 +87,4 @@ jobs:
           if [ -f /tmp/islik-api.pid ]; then
             kill $(cat /tmp/islik-api.pid) || true
           fi
+

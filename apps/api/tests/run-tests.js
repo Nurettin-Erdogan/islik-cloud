@@ -46,7 +46,9 @@ const testEnvironment = {
   ...process.env,
   NODE_ENV: "test",
   DATABASE_URL: getTestDatabaseUrl(),
-  JWT_SECRET: process.env.TEST_JWT_SECRET || "test-only-jwt-secret"
+  JWT_SECRET: process.env.TEST_JWT_SECRET || "test-only-jwt-secret",
+  APP_GIT_COMMIT:
+    process.env.APP_GIT_COMMIT || "0000000000000000000000000000000000000001"
 };
 
 run(process.execPath, [prismaCli, "migrate", "deploy"], testEnvironment);
@@ -59,3 +61,4 @@ run(
   ],
   testEnvironment
 );
+

@@ -29,6 +29,13 @@ const publicRequestRateLimitMax = normalizePositiveInteger(
   60
 );
 const requestBodyLimit = "4mb";
+function getDeploymentRevision() {
+  const revision = String(
+    process.env.RENDER_GIT_COMMIT || process.env.APP_GIT_COMMIT || ""
+  ).trim();
+
+  return /^[0-9a-f]{7,64}$/i.test(revision) ? revision.toLowerCase() : "local";
+}
 function normalizePositiveInteger(value, fallback) {
   const numberValue = Number(value);
   if (!Number.isInteger(numberValue) || numberValue <= 0) {
@@ -133,7 +140,8 @@ app.use(express.json({ limit: requestBodyLimit }));
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
-    service: "islik-cloud-api"
+    service: "islik-cloud-api",
+    revision: getDeploymentRevision()
   });
 });
 app.get("/ready", async (req, res) => {
@@ -141,7 +149,8 @@ app.get("/ready", async (req, res) => {
     await prisma.$queryRaw`SELECT 1`;
     res.json({
       status: "ready",
-      service: "islik-cloud-api"
+      service: "islik-cloud-api",
+      revision: getDeploymentRevision()
     });
   } catch {
     res.status(503).json({
@@ -208,3 +217,4 @@ app.use((error, req, res, next) => {
 module.exports = {
   app
 };
+
