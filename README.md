@@ -38,12 +38,15 @@ Bu proje; yalnızca arayüz değil, veri modeli, API güvenliği, mobil dayanık
 - Web: https://islik-cloud.vercel.app
 - API: https://islik-cloud-api.onrender.com
 - Sağlık: https://islik-cloud-api.onrender.com/health
+- Hazırlık: https://islik-cloud-api.onrender.com/ready
 
 Render ücretsiz planda uykuya geçebildiği için ilk bulut isteği zaman zaman gecikebilir. Uygulama bu durum için uzun istek zaman aşımı, bağlantı durumu ve yeniden deneme akışı içerir.
 
+`/health` ve `/ready` yanıtları çalışan Git commit SHA'sını `revision` alanında döndürür. Manuel `Production Smoke Test` iş akışı bu değeri seçilen GitHub commit'iyle karşılaştırarak eski bir Render deployment'ını otomatik olarak reddeder.
+
 ## Sürüm
 
-Güncel mobil uygulama sürümü `1.2.0`'dır. Mobil istemci Expo ile gerçek Android/iOS uygulaması olarak yazılmıştır; Capacitor kullanılmaz.
+Güncel mobil uygulama sürümü `1.2.1`'dir. Mobil istemci Expo ile gerçek Android/iOS uygulaması olarak yazılmıştır; Capacitor kullanılmaz.
 
 ## Özellikler
 
@@ -233,3 +236,4 @@ Yayın öncesi bütün adımlar [deploy-checklist.md](docs/deploy-checklist.md) 
 ## Lisans
 
 Bu proje [MIT Lisansı](LICENSE) ile lisanslanmıştır.
+

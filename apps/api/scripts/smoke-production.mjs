@@ -27,6 +27,15 @@ function parseTimeout(value) {
   return timeout;
 }
 
+function parseExpectedRevision(value) {
+  const revision = String(value || "").trim().toLowerCase();
+  assert(
+    !revision || /^[0-9a-f]{7,64}$/.test(revision),
+    "SMOKE_EXPECTED_GIT_COMMIT must be a 7-64 character hexadecimal commit SHA.",
+  );
+  return revision;
+}
+
 async function request(baseUrl, path, timeoutMs, options = {}) {
   const response = await fetch(new URL(path, baseUrl), {
     ...options,
@@ -58,6 +67,7 @@ function assertHeader(response, name, expectedValue) {
 async function main() {
   const baseUrl = parseBaseUrl(process.env.SMOKE_BASE_URL);
   const timeoutMs = parseTimeout(process.env.SMOKE_TIMEOUT_MS);
+  const expectedRevision = parseExpectedRevision(process.env.SMOKE_EXPECTED_GIT_COMMIT);
 
   console.log(`Checking ${baseUrl.origin}`);
 
@@ -65,6 +75,13 @@ async function main() {
   assert(health.response.status === 200, `/health returned ${health.response.status}.`);
   assert(health.body?.status === "ok", '/health must return status "ok".');
   assert(health.body?.service === "islik-cloud-api", "/health returned an unexpected service.");
+  assert(typeof health.body?.revision === "string", "/health must return a deployment revision.");
+  if (expectedRevision) {
+    assert(
+      health.body.revision === expectedRevision,
+      `/health is running revision "${health.body.revision}", expected "${expectedRevision}".`,
+    );
+  }
 
   assertHeader(health.response, "x-content-type-options", "nosniff");
   assertHeader(health.response, "x-frame-options", "DENY");
@@ -89,6 +106,10 @@ async function main() {
   assert(readiness.response.status === 200, `/ready returned ${readiness.response.status}.`);
   assert(readiness.body?.status === "ready", '/ready must return status "ready".');
   assert(readiness.body?.service === "islik-cloud-api", "/ready returned an unexpected service.");
+  assert(
+    readiness.body?.revision === health.body.revision,
+    "/health and /ready returned different deployment revisions.",
+  );
 
   console.log("✓ /ready and database connectivity");
 
@@ -111,3 +132,4 @@ main().catch((error) => {
   console.error(`Production smoke test failed: ${error.message}`);
   process.exitCode = 1;
 });
+

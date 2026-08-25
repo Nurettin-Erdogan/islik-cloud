@@ -24,5 +24,7 @@ jobs:
         env:
           SMOKE_BASE_URL: https://islik-cloud-api.onrender.com
           SMOKE_TIMEOUT_MS: "90000"
+          SMOKE_EXPECTED_GIT_COMMIT: ${{ github.sha }}
         working-directory: apps/api
         run: npm run smoke:production
+
