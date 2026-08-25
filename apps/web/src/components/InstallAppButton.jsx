@@ -13,14 +13,12 @@ function isStandaloneApp() {
 
 function InstallAppButton({ className = "" }) {
   const [installPrompt, setInstallPrompt] = useState(null);
-  const [installed, setInstalled] = useState(false);
+  const [installed, setInstalled] = useState(isStandaloneApp);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return undefined;
     }
-
-    setInstalled(isStandaloneApp());
 
     function handleBeforeInstallPrompt(event) {
       event.preventDefault();
