@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const TOKEN_KEY = "islik_cloud_token";
 const USER_KEY = "islik_cloud_user";
-const WARMUP_TIMEOUT_MS = 8_000;
+const WARMUP_TIMEOUT_MS = 45_000;
 const REQUEST_TIMEOUT_MS = 75_000;
 
 export function getToken() {
@@ -95,20 +95,24 @@ async function request(path, options = {}) {
 }
 
 export async function warmUpApi() {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), WARMUP_TIMEOUT_MS);
+  const attempts = [WARMUP_TIMEOUT_MS, 20_000];
 
-  try {
-    await request("/health", {
-      signal: controller.signal
-    });
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
+  for (const timeoutMs of attempts) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      await request("/health", {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return true;
+    } catch {
+      clearTimeout(timeoutId);
+    }
   }
 
-  return null;
+  return false;
 }
 
 export async function register(payload) {

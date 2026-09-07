@@ -5,7 +5,8 @@ import CustomerPortal from "./CustomerPortal";
 
 vi.mock("../services/api", () => ({
   createPublicRequest: vi.fn(),
-  getPublicRequest: vi.fn()
+  getPublicRequest: vi.fn(),
+  warmUpApi: vi.fn().mockResolvedValue(true)
 }));
 
 vi.mock("../imageUtils", () => ({

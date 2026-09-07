@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Camera, ClipboardPlus, Search } from "lucide-react";
-import { createPublicRequest, getPublicRequest } from "../services/api";
+import { createPublicRequest, getPublicRequest, warmUpApi } from "../services/api";
 import { compressImageFile } from "../imageUtils";
 
 const MAX_PHOTOS = 3;
+const WARMUP_HINT_DELAY_MS = 2500;
 
 const productCategories = [
   { value: "heating", label: "Kombi / Isıtma" },
@@ -31,7 +32,12 @@ const portalErrorMessages = {
   "name cannot contain numbers.": "Ad soyad alanında rakam kullanma.",
   "phone must contain digits only.": "Telefon sadece rakam olmalı.",
   "description is required.": "Arıza açıklaması en az 10 karakter olmalı.",
-  "Service owner account is not ready.": "Servis hesabı henüz hazır değil."
+  "Service owner account is not ready.": "Servis hesabı henüz hazır değil.",
+  "Too many public request attempts. Try again later.":
+    "Çok fazla deneme yapıldı. Bir süre sonra tekrar dene.",
+  "requestCode must be valid.": "Takip kodu geçersiz. Örnek: SD-123456",
+  "phone is required.": "Telefon numarası gerekli.",
+  "name is required.": "Ad soyad gerekli."
 };
 
 function translatePortalError(error) {
@@ -81,6 +87,29 @@ function CustomerPortal() {
   const [submitting, setSubmitting] = useState(false);
   const [tracking, setTracking] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [warmupTakingLong, setWarmupTakingLong] = useState(false);
+  const [slowSubmit, setSlowSubmit] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const warmupTimerId = setTimeout(() => {
+      if (isMounted) {
+        setWarmupTakingLong(true);
+      }
+    }, WARMUP_HINT_DELAY_MS);
+
+    warmUpApi().finally(() => {
+      clearTimeout(warmupTimerId);
+      if (isMounted) {
+        setWarmupTakingLong(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      clearTimeout(warmupTimerId);
+    };
+  }, []);
 
   function updateRequestForm(event) {
     const { name, value } = event.target;
@@ -163,8 +192,11 @@ function CustomerPortal() {
 
     try {
       setSubmitting(true);
+      setSlowSubmit(false);
       setMessage("");
+      const slowTimerId = setTimeout(() => setSlowSubmit(true), 4000);
       const response = await createPublicRequest(requestForm);
+      clearTimeout(slowTimerId);
       setCreatedRequest(response.data);
       setTrackedRequest(null);
       setPortalMode("track");
@@ -176,6 +208,7 @@ function CustomerPortal() {
     } catch (error) {
       setMessage("Hata: " + translatePortalError(error));
     } finally {
+      setSlowSubmit(false);
       setSubmitting(false);
     }
   }
@@ -204,6 +237,11 @@ function CustomerPortal() {
   }
 
   const result = createdRequest || trackedRequest;
+  const helperMessage = slowSubmit
+    ? "Sunucu hazırlanıyor olabilir, birazdan devam edeceğiz."
+    : warmupTakingLong && !submitting && !tracking
+      ? "Bağlantı hazırlanıyor, bilgilerini girmeye devam edebilirsin."
+      : "";
 
   return (
     <section className="auth-card customer-portal">
@@ -214,6 +252,7 @@ function CustomerPortal() {
           ? "Cihazını seç, arızayı anlat ve servis talebini oluştur."
           : "Takip kodunla servis sürecini ve randevu durumunu görüntüle."}
       </p>
+      {helperMessage ? <p className="portal-warmup-hint">{helperMessage}</p> : null}
 
       <div className="portal-mode-switch" role="tablist" aria-label="Müşteri işlemleri">
         <button
