@@ -1,5 +1,16 @@
 # Değişiklik Günlüğü
 
+## Unreleased
+
+### Güvenlik
+
+- Dependabot: `browserslist`, `qs`, `@xmldom/xmldom` güvenlik güncellemeleri birleştirildi.
+
+### Değiştirildi
+
+- README portföy/vitrin odaklı sadeleştirildi; İngilizce özet eklendi.
+- Web README’ye JWT `localStorage` güvenlik notu eklendi.
+
 ## 1.2.1 - 2026-07-19
 
 ### İyileştirildi
