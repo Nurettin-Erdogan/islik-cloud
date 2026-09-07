@@ -1,5 +1,5 @@
 {
-  "name": "api",
+  "name": "servis-defteri-api",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -14,9 +14,9 @@
     "smoke:production": "node scripts/smoke-production.mjs"
   },
   "keywords": [],
-  "author": "",
+  "author": "Nurettin Erdo\u011fan",
   "license": "MIT",
-  "description": "",
+  "description": "Servis Defteri Express API \u2014 m\u00fc\u015fteri, i\u015f emri ve public talep u\u00e7lar\u0131",
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",

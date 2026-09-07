@@ -817,3 +817,10 @@ test("users can only access their own customers and jobs", async () => {
     .expect(400);
 });
 
+
+test("security headers reject framing and leaking referrers", async () => {
+  const response = await request(app).get("/health").expect(200);
+  assert.equal(response.headers["x-frame-options"], "DENY");
+  assert.equal(response.headers["referrer-policy"], "no-referrer");
+  assert.equal(response.headers["permissions-policy"], "camera=(), microphone=(), geolocation=()");
+});
