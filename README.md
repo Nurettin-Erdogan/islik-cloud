@@ -33,7 +33,7 @@ Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustal
 | **Zor mühendislik kararları** | Mobil SecureStore oturumu, çevrimdışı önbellek, fotoğraf sıkıştırma, tenant izolasyonu, üretim dayanıklılığı |
 | **Doğrulama** | API / web / Android / iOS CI; Supertest entegrasyon testleri; canlı Vercel + Render |
 
-Bu depo özel tutulur; canlı demo herkese açıktır. Ürünü uçtan uca (veri modeli, API güvenliği, mobil, CI, bulut) geliştirebildiğimi göstermek için tasarlandı.
+Kaynak deposu özeldir; canlı web herkese açıktır. Mimari, güvenlik notları ve demo akışı bu belgelerde durur.
 
 ## English
 

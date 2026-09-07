@@ -1,51 +1,55 @@
-# 3 Dakikalık Demo Akışı
+# 3 dakikalık demo
 
-Bu senaryo Servis Defteri'ni iş görüşmesinde kısa, tutarlı ve teknik kararlarla birlikte göstermek için hazırlanmıştır.
+Servis Defteri’ni kısa bir ürün turunda göstermek için hazırlanmış akış. Amaç özellik listesi okumak değil; müşteri talebinden usta operasyonuna kadar aynı kaydın nasıl izolasyon, ödeme ve dağıtım kararlarıyla taşındığını anlatmak.
 
 ## Hazırlık
 
-- [Canlı web uygulamasını](https://islik-cloud.vercel.app/) aç.
-- [API health](https://islik-cloud-api.onrender.com/health) yanıtını kontrol et.
-- Yalnızca kurgusal müşteri bilgileri kullan; gerçek telefon, adres veya fotoğraf yükleme.
-- Render cold start nedeniyle API gecikirse beklerken mimariyi anlat; servis hazır değilse yerel akışa geç.
+- [Canlı web](https://islik-cloud.vercel.app/) ve [API health](https://islik-cloud-api.onrender.com/health) açık olsun.
+- Yalnızca kurgusal müşteri bilgisi kullanın; gerçek telefon, adres veya fotoğraf yüklemeyin.
+- Render ücretsiz planda uykuya geçebilir. İlk istek gecikirse beklerken mimariyi özetleyin; servis açılmazsa yerel kurulumla devam edin.
 
 ## 0:00–0:30 — Problem
 
-“Küçük servis işletmelerinde müşteri talebi, randevu, iş durumu ve ödeme bilgisi farklı kanallara dağılıyor. Servis Defteri bu akışı müşterinin talep ekranından ustanın operasyon paneline kadar tek üründe topluyor.”
+Küçük servis işletmelerinde talep, randevu, iş durumu ve tahsilat çoğu zaman WhatsApp, defter ve Excel arasında dağılır. Servis Defteri bu kaydı tek üründe tutar: müşteri hesap açmadan talep oluşturur, usta aynı kaydı randevu, durum ve ödeme ile yönetir.
 
-## 0:30–1:15 — Müşteri akışı
+## 0:30–1:15 — Müşteri
 
-1. Kurgusal bir ürün ve arıza açıklaması gir.
-2. Fotoğrafların cihazda küçültüldüğünü ve en fazla üç görsel kabul edildiğini belirt.
-3. Talep sonucundaki takip kodunu göster.
-4. Takip kodu ve telefonla durum geçmişinin nasıl açıldığını anlat.
+1. Kurgusal ürün ve arıza açıklaması girin.
+2. Fotoğrafların yüklemeden önce cihazda sıkıştırıldığını, en fazla üç görsel kabul edildiğini belirtin.
+3. Oluşan takip kodunu gösterin.
+4. Kod ve telefonla durum geçmişinin nasıl açıldığını gösterin.
 
-Vurgu: müşteri hesap açmadan talep oluşturabilir; public takip cevabı hassas adres ve telefon bilgisini döndürmez.
+Public takip yanıtı adres ve tam telefon döndürmez. Kimliği doğrulanmamış uç, operasyon detayını sızdırmaz.
 
-## 1:15–2:10 — Usta akışı
+## 1:15–2:10 — Usta
 
-1. Usta panelinde bugün, açık işler ve ödeme durumlarını göster.
-2. Bir talebin randevu ve durum akışını aç.
-3. Kısmi ödeme sonrası kalan tutarın nasıl hesaplandığını göster.
-4. Türkçe karakterli arama ve CSV dışa aktarmayı işaret et.
+1. Bugün, açık işler ve ödeme panolarını açın.
+2. Bir talebin randevu ve durum geçmişini gösterin.
+3. Kısmi ödemede kalan tutarın sunucuda hesaplandığını gösterin.
+4. Türkçe karakterli arama ve CSV dışa aktarmayı işaret edin.
 
-Vurgu: bütün müşteri ve iş sorguları oturum açan ustaya göre filtrelenir; başka bir hesabın kaydına kimlikle erişim integration testleriyle engellenir.
+Müşteri ve iş sorguları oturumdaki ustaya göre süzülür. Başka hesabın kaydına kimlik ile erişim, entegrasyon testleriyle reddedilir.
 
-## 2:10–2:45 — Teknik derinlik
+## 2:10–2:45 — Mimari kararlar
 
-- React/Vite web ve Expo/React Native mobil istemci aynı Express API'yi kullanır.
-- PostgreSQL şeması Prisma migration ile yönetilir.
-- Mobil token SecureStore'da tutulur; eski AsyncStorage token'ı güvenli alana taşınır.
-- API, web, Android ve iOS kontrolleri ayrı GitHub Actions workflow'larında çalışır.
-- Production smoke testi health, readiness, güvenlik başlıkları ve CORS reddini aynı komutla doğrular.
+Web (React/Vite) ve mobil (Expo) aynı Express API’yi kullanır; iş kuralı istemciye dağılmaz. Şema Prisma migration ile sürülür. Mobil oturum `SecureStore` üzerindedir; eski `AsyncStorage` jetonu ilk açılışta güvenli alana taşınır.
+
+API, web, Android ve iOS ayrı GitHub Actions işlerinde koşar. Üretim duman testi `/health`, `/ready`, güvenlik başlıkları ve CORS reddini aynı komutla doğrular. Böylece “çalışıyor” iddiası tek bir mutlu yola bağlı kalmaz.
 
 ## 2:45–3:00 — Kapanış
 
-“Bu projede yalnızca ekran geliştirmedim; veri izolasyonu, mobil dayanıklılık, test, CI ve production dağıtımını birlikte ele aldım.”
+Servis Defteri, küçük bir operasyon ürününü uçtan uca ele alır: tenant izolasyonu, mobil oturum, istemci tarafı görsel sınırı, ödeme tutarlılığı ve üretim doğrulaması aynı kayıt etrafında durur.
 
-## Görüşmede gelebilecek sorular
+## Olası sorular
 
-- Fotoğrafları neden sunucu yerine önce istemcide sıkıştırdın?
-- JWT ve kullanıcı bazlı veri izolasyonunu nasıl test ettin?
-- Render cold start ve çevrimdışı mobil kullanım için ne yaptın?
-- Kısmi ödeme güncellemelerinde tutarlılığı nasıl korudun?
+**Fotoğrafları neden önce istemcide sıkıştırıyorsunuz?**  
+Render ve tarayıcı yükleme sınırını aşmamak için. Üç görsel, sıkıştırılmış `dataUrl` ve istek boyutu API’de yeniden doğrulanır; sıkıştırma yalnızca güven varsayımı değildir.
+
+**JWT ve kullanıcı izolasyonunu nasıl doğruluyorsunuz?**  
+Entegrasyon testleri başka kullanıcının `jobId` / müşteri kimliğiyle GET–PUT–DELETE dener ve 404/403 bekler. Yetki, sorguda `userId` süzgeciyle uygulanır; yalnızca arayüz gizlemesine dayanılmaz.
+
+**Cold start ve çevrimdışı mobil için ne yaptınız?**  
+İstemci warmup, uzun zaman aşımı ve yavaş-yol metni kullanır. Mobil listeler SecureStore önbelleğinden açılır; LAN API adresi algılanır, kopunca yeniden denenir.
+
+**Kısmi ödemede tutar nasıl tutarlı kalır?**  
+`paidAmount`, fiyatı aşamaz; kalan tutar istemci tahmini değil sunucu kuralıdır. Geçersiz geçişler 400 ile reddedilir.
