@@ -22,6 +22,39 @@ const statusLabels = {
   cancelled: "İptal edildi"
 };
 
+const portalErrorMessages = {
+  "Request was not found.": "Talep bulunamadı. Kod ve telefonu kontrol et.",
+  "Request is too large. Add at most 3 compressed photos.":
+    "Fotoğrafların toplam boyutu çok büyük. Daha küçük fotoğraflarla tekrar dene.",
+  "photos can contain at most 3 images.": "En fazla 3 fotoğraf ekleyebilirsin.",
+  "photo is too large.": "Fotoğraf çok büyük.",
+  "name cannot contain numbers.": "Ad soyad alanında rakam kullanma.",
+  "phone must contain digits only.": "Telefon sadece rakam olmalı.",
+  "description is required.": "Arıza açıklaması en az 10 karakter olmalı.",
+  "Service owner account is not ready.": "Servis hesabı henüz hazır değil."
+};
+
+function translatePortalError(error) {
+  const message = String(error?.message || "").trim();
+  return portalErrorMessages[message] || message || "İşlem tamamlanamadı.";
+}
+
+function formatHistoryTime(value) {
+  if (!value) {
+    return "Tarih yok";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Tarih yok";
+  }
+
+  return date.toLocaleString("tr-TR", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+}
+
 const initialRequestForm = {
   name: "",
   phone: "",
@@ -108,7 +141,7 @@ function CustomerPortal() {
         setMessage("En fazla 3 fotoğraf eklendi.");
       }
     } catch (error) {
-      setMessage("Hata: " + error.message);
+      setMessage("Hata: " + translatePortalError(error));
     } finally {
       setPhotoBusy(false);
     }
@@ -141,7 +174,7 @@ function CustomerPortal() {
       });
       setRequestForm(initialRequestForm);
     } catch (error) {
-      setMessage("Hata: " + error.message);
+      setMessage("Hata: " + translatePortalError(error));
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +197,7 @@ function CustomerPortal() {
       setTrackedRequest(response.data);
       setCreatedRequest(null);
     } catch (error) {
-      setMessage("Hata: " + error.message);
+      setMessage("Hata: " + translatePortalError(error));
     } finally {
       setTracking(false);
     }
@@ -421,6 +454,20 @@ function CustomerPortal() {
                   src={photo.dataUrl}
                   alt={`Talep fotoğrafı ${index + 1}`}
                 />
+              ))}
+            </div>
+          ) : null}
+          {Array.isArray(result.statusHistory) && result.statusHistory.length > 0 ? (
+            <div className="portal-history">
+              <strong>Talep geçmişi</strong>
+              {result.statusHistory.map((event) => (
+                <div
+                  className="portal-history-item"
+                  key={event.id || `${event.status}-${event.createdAt}`}
+                >
+                  <span>{statusLabels[event.status] || event.status}</span>
+                  <small>{formatHistoryTime(event.createdAt)}</small>
+                </div>
               ))}
             </div>
           ) : null}

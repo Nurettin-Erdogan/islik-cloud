@@ -373,7 +373,17 @@ function App() {
       return;
     }
 
-    setMessage(`Hata: ${error.message}`);
+    const knownErrors = {
+      "Job not found.": "İş kaydı bulunamadı.",
+      "Related customer was not found.": "İlgili müşteri bulunamadı.",
+      "Request is too large. Add at most 3 compressed photos.":
+        "Fotoğrafların toplam boyutu çok büyük. Daha küçük fotoğraflarla tekrar dene.",
+      "photos can contain at most 3 images.": "En fazla 3 fotoğraf ekleyebilirsin.",
+      "photo is too large.": "Fotoğraf çok büyük.",
+      "Service owner account is not ready.": "Servis hesabı henüz hazır değil."
+    };
+    const raw = String(error?.message || "").trim();
+    setMessage(`Hata: ${knownErrors[raw] || raw || "İşlem tamamlanamadı."}`);
   }
   useEffect(() => {
     function syncViewFromRoute() {

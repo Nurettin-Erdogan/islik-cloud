@@ -1,3 +1,5 @@
+import { BadgeCheck, Banknote, Pencil, Trash2 } from "lucide-react";
+
 const statusLabels = {
   pending: "Talep alındı",
   in_progress: "İncelemede",
@@ -37,6 +39,22 @@ function formatAppointment(value) {
 
   if (Number.isNaN(date.getTime())) {
     return null;
+  }
+
+  return date.toLocaleString("tr-TR", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+}
+
+function formatEventTime(value) {
+  if (!value) {
+    return "Tarih yok";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Tarih yok";
   }
 
   return date.toLocaleString("tr-TR", {
@@ -105,6 +123,9 @@ function JobList({
             const hasPartialPayment =
               job.paymentStatus === "partial" && price > 0 && Number(job.paidAmount || 0) > 0;
             const overdue = isOverdue(job);
+            const photos = Array.isArray(job.photos) ? job.photos : [];
+            const statusEvents = Array.isArray(job.statusEvents) ? job.statusEvents : [];
+            const recentEvents = statusEvents.slice(-3);
 
             return (
               <div className={`list-item ${overdue ? "is-overdue" : ""}`} key={job.id}>
@@ -112,6 +133,17 @@ function JobList({
                   <strong>{job.title}</strong>
                   <span>{job.customer?.name || "Müşteri yok"}</span>
                   <small>{getProductLine(job)}</small>
+                  {photos.length > 0 ? (
+                    <div className="job-photos">
+                      {photos.map((photo, index) => (
+                        <img
+                          key={photo.id || index}
+                          src={photo.dataUrl}
+                          alt={`Talep fotoğrafı ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="job-meta">
                     {job.requestCode ? (
                       <span className="badge request-code">{job.requestCode}</span>
@@ -137,6 +169,17 @@ function JobList({
                     </small>
                   ) : null}
                   {appointment ? <small>Randevu: {appointment}</small> : null}
+                  {recentEvents.length > 0 ? (
+                    <div className="job-history">
+                      <strong>İş geçmişi</strong>
+                      {recentEvents.map((event) => (
+                        <div className="job-history-item" key={event.id || `${event.status}-${event.createdAt}`}>
+                          <span>{statusLabels[event.status] || event.status}</span>
+                          <small>{formatEventTime(event.createdAt)}</small>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="list-actions">
@@ -188,4 +231,3 @@ function JobList({
 }
 
 export default JobList;
-import { BadgeCheck, Banknote, Pencil, Trash2 } from "lucide-react";
