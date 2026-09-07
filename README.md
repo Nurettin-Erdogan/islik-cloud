@@ -13,7 +13,7 @@ Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustal
 <p align="center">
   <a href="https://islik-cloud.vercel.app/"><strong>Canlı web uygulamasını aç →</strong></a>
   &nbsp;·&nbsp;
-  <a href="docs/demo-guide.md"><strong>3 dakikalık demo</strong></a>
+  <a href="docs/demo-guide.md"><strong>Canlı tur</strong></a>
   &nbsp;·&nbsp;
   <a href="docs/">Teknik belgeler</a>
   &nbsp;·&nbsp;
@@ -24,13 +24,13 @@ Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustal
   <img src="docs/screenshots/customer-request.png" alt="Servis Defteri müşteri servis talebi ekranı" width="900">
 </p>
 
-## Portföy özeti
+## Özet
 
 | | |
 | --- | --- |
 | **Problem** | Küçük servis işletmelerinde müşteri, randevu, iş emri ve ödeme takibinin farklı kanallara dağılması |
 | **Çözüm** | Aynı iş akışını React web, Expo mobil ve Express API üzerinde birleştiren uçtan uca ürün |
-| **Zor mühendislik kararları** | Mobil SecureStore oturumu, çevrimdışı önbellek, fotoğraf sıkıştırma, tenant izolasyonu, üretim dayanıklılığı |
+| **Kararlar** | Mobil SecureStore oturumu, çevrimdışı önbellek, fotoğraf sıkıştırma, tenant izolasyonu, üretim dayanıklılığı |
 | **Doğrulama** | API / web / Android / iOS CI; Supertest entegrasyon testleri; canlı Vercel + Render |
 
 Kaynak deposu özeldir; canlı web herkese açıktır. Mimari, güvenlik notları ve demo akışı bu belgelerde durur.
