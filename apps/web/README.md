@@ -44,3 +44,7 @@ VITE_API_URL=http://BILGISAYAR_IP:4000
 ```
 
 Not: Telefonda gerçek kurulabilir PWA deneyimi için adresin HTTPS olması gerekir. Local IP ile ekranı test edebilirsin; tam kurulum için uygulamayı HTTPS bir adrese deploy etmek gerekir.
+
+## Güvenlik notu
+
+Kimlik doğrulama jetonu tarayıcıda `localStorage` içinde tutulur (XSS yüzeyi). Mobil istemci SecureStore kullanır. Üretim sıkılaştırmasında httpOnly cookie tercih edilmelidir.

@@ -4,9 +4,11 @@
   <a href="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/api-ci.yml"><img src="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/api-ci.yml/badge.svg?branch=main" alt="API CI"></a>
   <a href="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/web-ci.yml"><img src="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/web-ci.yml/badge.svg?branch=main" alt="Web CI"></a>
   <a href="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/mobile-ci.yml"><img src="https://github.com/Nurettin-Erdogan/islik-cloud/actions/workflows/mobile-ci.yml/badge.svg?branch=main" alt="Mobil CI"></a>
+  <a href="https://islik-cloud.vercel.app/"><img src="https://img.shields.io/badge/canl%C4%B1%20web-Vercel-0f766e.svg" alt="Canlı web"></a>
+  <img src="https://img.shields.io/badge/mobil-Expo%201.2.1-0f766e.svg" alt="Expo 1.2.1">
 </p>
 
-Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustaların ise müşteri, randevu, iş ve ödeme süreçlerini yönettiği web ve mobil uygulamadır.
+Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustaların ise müşteri, randevu, iş ve ödeme süreçlerini yönettiği **web + mobil + API** ürünüdür.
 
 <p align="center">
   <a href="https://islik-cloud.vercel.app/"><strong>Canlı web uygulamasını aç →</strong></a>
@@ -28,10 +30,14 @@ Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustal
 | --- | --- |
 | **Problem** | Küçük servis işletmelerinde müşteri, randevu, iş emri ve ödeme takibinin farklı kanallara dağılması |
 | **Çözüm** | Aynı iş akışını React web, Expo mobil ve Express API üzerinde birleştiren uçtan uca ürün |
-| **Zor mühendislik kararları** | Mobil güvenli oturum taşıma, çevrimdışı önbellek, fotoğraf sıkıştırma, atomik ödeme/iş akışları ve üretim ortamı dayanıklılığı |
-| **Doğrulama** | API, web, Android ve iOS için bağımsız GitHub Actions kontrolleri; Supertest ve Node.js testleri |
+| **Zor mühendislik kararları** | Mobil SecureStore oturumu, çevrimdışı önbellek, fotoğraf sıkıştırma, tenant izolasyonu, üretim dayanıklılığı |
+| **Doğrulama** | API / web / Android / iOS CI; Supertest entegrasyon testleri; canlı Vercel + Render |
 
-Bu proje; yalnızca arayüz değil, veri modeli, API güvenliği, mobil dayanıklılık, CI ve bulut dağıtımıyla birlikte çalışan bir ürünü uçtan uca geliştirebildiğimi gösterir.
+Bu depo özel tutulur; canlı demo herkese açıktır. Ürünü uçtan uca (veri modeli, API güvenliği, mobil, CI, bulut) geliştirebildiğimi göstermek için tasarlandı.
+
+## English
+
+**Servis Defteri** is an end-to-end ops product for small service businesses: customer requests, appointments, job status, and payments — same workflow on React web, Expo mobile, and an Express/Prisma API. Live web: [islik-cloud.vercel.app](https://islik-cloud.vercel.app/). Source stays private; architecture and demos are documented here.
 
 ## Canlı Sistem
 
@@ -40,200 +46,70 @@ Bu proje; yalnızca arayüz değil, veri modeli, API güvenliği, mobil dayanık
 - Sağlık: https://islik-cloud-api.onrender.com/health
 - Hazırlık: https://islik-cloud-api.onrender.com/ready
 
-Render ücretsiz planda uykuya geçebildiği için ilk bulut isteği zaman zaman gecikebilir. Uygulama bu durum için uzun istek zaman aşımı, bağlantı durumu ve yeniden deneme akışı içerir.
+Render ücretsiz planda uykuya geçebildiği için ilk bulut isteği gecikebilir. İstemciler uzun zaman aşımı ve yeniden deneme kullanır.
 
-`/health` ve `/ready` yanıtları çalışan Git commit SHA'sını `revision` alanında döndürür. Manuel `Production Smoke Test` iş akışı bu değeri seçilen GitHub commit'iyle karşılaştırarak eski bir Render deployment'ını otomatik olarak reddeder.
+## Güvenlik notları (kısa)
+
+- API: JWT + bcrypt (cost 12), CORS allowlist, auth/public rate limit, güvenlik başlıkları, kullanıcı bazlı tenant izolasyonu
+- Mobil: token `expo-secure-store` (Keychain / Keystore)
+- Web: JWT şu an `localStorage`’da — XSS yüzeyini bilerek kabul edilen vitrin/demo tercihi; httpOnly cookie’ye geçiş roadmap’te
+- Ortam şablonu: `apps/api/.env.example` (JWT, CORS, rate-limit alanları)
 
 ## Sürüm
 
-Güncel mobil uygulama sürümü `1.2.1`'dir. Mobil istemci Expo ile gerçek Android/iOS uygulaması olarak yazılmıştır; Capacitor kullanılmaz.
+Mobil uygulama `1.2.1` · Expo (Capacitor yok)
 
 ## Özellikler
 
 ### Müşteri
 
-- Üye olmadan servis talebi oluşturma
-- Ürün kategorisi, marka, model, adres ve arıza açıklaması ekleme
-- Kameradan veya galeriden en fazla üç arıza fotoğrafı ekleme
-- Fotoğrafları cihazda otomatik küçültme ve sıkıştırma
-- Takip kodu ve telefonla talep durumunu izleme
-- Randevu ve durum geçmişini görme
+- Üye olmadan servis talebi
+- Kategori, marka, model, adres, arıza açıklaması
+- En fazla üç sıkıştırılmış arıza fotoğrafı
+- Takip kodu + telefon ile durum izleme
 
 ### Usta
 
-- Güvenli kayıt, giriş ve kalıcı oturum
-- Bugün, açık, acil, ödeme bekleyen ve tamamlanan talep panoları
-- Müşteri oluşturma, düzenleme, arama ve silme
-- Müşteri kartından doğrudan talep açma
-- Talep oluşturma, düzenleme, fotoğraf ekleme ve hızlı durum işlemleri
-- Geçmiş randevu oluşturmayı engelleme; mevcut eski kaydı bozmadan düzenleyebilme
-- Ödenmedi, kısmi ödendi ve ödendi takibi
-- Kısmi ödemede kalan tutarı gösterme
-- Türkçe karakterleri dikkate alan müşteri ve talep araması
-- Müşteri ve talep verilerini CSV olarak dışa aktarma/paylaşma
+- Kayıt / giriş, panolar (bugün, açık, acil, ödeme, tamamlanan)
+- Müşteri ve talep CRUD, arama, CSV dışa aktarma
+- Ödeme durumları (ödenmedi / kısmi / ödendi)
 
-### Mobil Dayanıklılık
+### Mobil dayanıklılık
 
-- Token'ı iOS Keychain / Android Keystore destekli `expo-secure-store` içinde saklama
-- Daha önce AsyncStorage'da saklanan token'ı güvenli alana otomatik taşıma
-- Son müşteri ve talep listesini yerel önbellekten gösterme
-- Bulut API'yi varsayılan kullanma; geliştirmede LAN API'yi otomatik algılama
-- Bağlantı kesildiğinde açık durum ve yeniden deneme seçeneği
-- Android ve iOS üretim bundle doğrulaması
+- SecureStore + legacy migrate
+- Yerel liste önbelleği, LAN API algılama, bağlantı kopunca yeniden deneme
 
 ## Teknolojiler
 
-- Web: React, Vite, CSS
-- Mobil: Expo, React Native, SecureStore, Image Picker, Image Manipulator
-- API: Node.js, Express, Prisma, JWT, bcryptjs
-- Veritabanı: PostgreSQL
-- Test: Node.js test runner, Supertest
-- CI: GitHub Actions üzerinde API, web, Android ve iOS kontrolleri
-- Barındırma: Vercel, Render, EAS Build
+Web: React, Vite · Mobil: Expo, SecureStore · API: Node.js, Express, Prisma, JWT · DB: PostgreSQL · CI: GitHub Actions · Host: Vercel, Render, EAS
 
 ## Proje Yapısı
 
 ```text
-Servis Defteri/
-├── .github/workflows/
-│   ├── api-ci.yml
-│   ├── mobile-ci.yml
-│   └── web-ci.yml
-├── apps/
-│   ├── api/
-│   ├── mobile/
-│   └── web/
-├── docs/
-├── docker-compose.yml
-├── Servis Defteri Baslat.cmd
-└── Servis Defteri Mobil Baslat.cmd
+apps/
+├── api/      Express + Prisma
+├── web/      React (Vite) PWA
+└── mobile/   Expo
+docs/         demo ve teknik belgeler
 ```
 
-## En Kolay Yerel Çalıştırma
-
-Windows'ta masaüstündeki şu dosyalardan birini aç:
-
-- Web + API: `Servis Defteri Baslat.cmd`
-- Expo mobil geliştirme: `Servis Defteri Mobil Baslat.cmd`
-
-Elle başlatmak için önce PostgreSQL ve API:
+## Yerel çalıştırma
 
 ```bash
-docker compose up -d postgres
-cd apps/api
-npm ci
-npx prisma migrate deploy
-npm run dev
+# Windows: Servis Defteri Baslat.cmd  (repo kökünden)
+docker compose -p islik-cloud up -d postgres
+cd apps/api && cp .env.example .env && npm ci && npx prisma migrate deploy && npm run dev
+cd apps/web && npm ci && npm run dev
 ```
-
-Yeni terminalde web:
-
-```bash
-cd apps/web
-npm ci
-npm run dev
-```
-
-Yeni terminalde mobil:
-
-```bash
-cd apps/mobile
-npm ci
-npm start
-```
-
-Yerel adresler:
-
-- Web: `http://localhost:5173`
-- API: `http://localhost:4000`
-- API sağlık: `http://localhost:4000/health`
-
-Fiziksel telefonda Expo Go kullanırken telefon ve bilgisayar aynı Wi-Fi ağında olmalıdır. Normal APK/mağaza sürümü doğrudan bulut API'ye bağlanır.
-
-## Ortam Değişkenleri
-
-API için `apps/api/.env`:
-
-```env
-DATABASE_URL="postgresql://islik:islik_password@localhost:5432/islik_cloud"
-JWT_SECRET="yalnizca-yerel-gelistirme-icin-guclu-bir-secret"
-CORS_ORIGIN="http://localhost:5173"
-PUBLIC_SERVICE_OWNER_EMAIL="usta@example.com"
-DEMO_EMAIL="demo@islik.dev"
-DEMO_PASSWORD=""
-```
-
-Web için `apps/web/.env`:
-
-```env
-VITE_API_URL="http://localhost:4000"
-```
-
-Mobil için `apps/mobile/.env.local`:
-
-```env
-EXPO_PUBLIC_API_URL="https://islik-cloud-api.onrender.com"
-```
-
-`PUBLIC_SERVICE_OWNER_EMAIL`, müşterilerin üye olmadan açtığı taleplerin hangi usta hesabına düşeceğini belirler. Gerçek secret ve parolalar repoya eklenmemelidir.
-
-İsteğe bağlı demo verisini oluşturmak için repoya yazılmamış, en az 12 karakterlik bir `DEMO_PASSWORD` tanımlayıp `npm run seed` çalıştırın. Seed komutu parolayı çıktı olarak yazmaz ve mevcut demo kullanıcısının parolasını verilen değerle yeniler. Production ortamında demo seed çalıştırılmamalıdır.
 
 ## Testler
 
 ```bash
-cd apps/api
-npm test
+cd apps/api && npm test
+cd apps/web && npm test
+cd apps/mobile && npm test
 ```
-
-```bash
-cd apps/web
-npm run lint
-npm run build
-```
-
-```bash
-cd apps/mobile
-npm run doctor
-npx expo export --platform android
-npx expo export --platform ios
-```
-
-API testleri ana veriyi silmemek için yalnızca yerel `islik_test` PostgreSQL şemasını kullanır.
-
-## API
-
-```http
-GET  /health
-GET  /ready
-
-POST /api/auth/register
-POST /api/auth/login
-GET  /api/auth/me
-
-POST /api/public/requests
-GET  /api/public/requests/:requestCode?phone=...
-
-GET    /api/customers
-POST   /api/customers
-GET    /api/customers/:id
-PUT    /api/customers/:id
-DELETE /api/customers/:id
-
-GET    /api/jobs
-POST   /api/jobs
-GET    /api/jobs/:id
-PUT    /api/jobs/:id
-DELETE /api/jobs/:id
-```
-
-Müşteri ve talep endpointleri JWT ister. Her sorgu giriş yapan kullanıcıya göre filtrelenir; başka bir ustanın kayıtlarına kimlik üzerinden erişim engellenir ve integration testleriyle doğrulanır.
-
-## Yayın
-
-Yayın öncesi bütün adımlar [deploy-checklist.md](docs/deploy-checklist.md) içinde, cihaz ve tarayıcı kabul senaryoları ise [manual-test-plan.txt](docs/manual-test-plan.txt) içindedir.
 
 ## Lisans
 
-Bu proje [MIT Lisansı](LICENSE) ile lisanslanmıştır.
-
+MIT — ayrıntılar `LICENSE` dosyasında. Güvenlik bildirimleri için `SECURITY.md`.
