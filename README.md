@@ -33,11 +33,11 @@ Servis Defteri; müşterilerin servis talebi oluşturup takip edebildiği, ustal
 | **Kararlar** | Mobil SecureStore oturumu, çevrimdışı önbellek, fotoğraf sıkıştırma, tenant izolasyonu, üretim dayanıklılığı |
 | **Doğrulama** | API / web / Android / iOS CI; Supertest entegrasyon testleri; canlı Vercel + Render |
 
-Kaynak deposu özeldir; canlı web herkese açıktır. Mimari, güvenlik notları ve demo akışı bu belgelerde durur.
+Kaynak kodu herkese açıktır; mimari, güvenlik notları ve demo akışı depo içindeki belgelerde yer alır.
 
 ## English
 
-**Servis Defteri** is an end-to-end ops product for small service businesses: customer requests, appointments, job status, and payments — same workflow on React web, Expo mobile, and an Express/Prisma API. Live web: [islik-cloud.vercel.app](https://islik-cloud.vercel.app/). Source stays private; architecture and demos are documented here.
+**Servis Defteri** is an end-to-end ops product for small service businesses: customer requests, appointments, job status, and payments — same workflow on React web, Expo mobile, and an Express/Prisma API. Live web: [islik-cloud.vercel.app](https://islik-cloud.vercel.app/). The source code is public, with architecture, security notes and demo flows documented in the repository.
 
 ## Canlı Sistem
 
